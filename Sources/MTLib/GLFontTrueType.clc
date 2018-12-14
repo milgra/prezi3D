@@ -1,0 +1,185 @@
+#include "MLVector4.h"
+#include "CLObject.clc"
+#include "GLBitmapRGBA.clc"
+#include "GLBitmapRGBAUtils.clc"
+#include "GLTextureMap.clc"
+
+
+GLFontTrueType:CLObject
+{
+    
+    int r;
+    int g;
+    int b;
+
+    int font_gap;
+    int font_ascent;
+    int font_descent;
+    float font_size;
+    float font_scale;
+    
+    char* name;
+    stbtt_fontinfo font_info;
+    unsigned char* font_buffer;
+
+    GLTextureMap* map;
+
+
+    // constructor
+
+    void init_name_path_size_r_g_b( 
+        char* the_name , 
+        char* the_path , 
+        float the_size , 
+        int the_r , 
+        int the_g , 
+        int the_b )
+    {
+
+        long size;
+        FILE* font_file;
+
+        CLObject:init( self );
+        
+        // setup
+        
+        r = the_r;
+        g = the_g;
+        b = the_b;
+        
+        name = the_name;
+        
+        font_size = the_size;
+        
+        map:alloc( );
+        map:init_width_height( 512 , 512 );
+
+        font_file = fopen( the_path , "rb" );
+        
+        fseek( font_file , 0 , SEEK_END );
+        size = ftell( font_file );
+        fseek( font_file , 0 , SEEK_SET );
+        
+        font_buffer = malloc( size );
+
+        fread( font_buffer , size , 1 , font_file );
+        fclose( font_file );
+        
+        if ( stbtt_InitFont( &font_info , font_buffer , stbtt_GetFontOffsetForIndex( font_buffer , 0 ) ) == 1 )
+        {
+
+            // get font_ascent font_descent and line font_gap
+
+            stbtt_GetFontVMetrics( &font_info , &font_ascent , &font_descent , &font_gap );
+            
+            // set font_scale
+            
+            font_scale = stbtt_ScaleForPixelHeight( &font_info , font_size );
+            
+        }
+        else printf( "\nERROR : CANNOT INIT FONT" );
+
+    }
+
+
+    // destructor
+
+    void destuct( )
+    {
+    
+        map:release( );
+        
+        free( font_buffer );
+    
+        CLObject:destruct( self );
+
+    }
+    
+    
+    // returns glyph texture id, frame and normalized coordinates
+    
+    char texture_frame_coords_for_codepoint(
+        GLuint* the_texture , 
+        MLVector4* the_frame , 
+        MLVector4* the_coords , 
+        int the_codepoint )
+    {
+    
+        int width, height, asc, x1, y1, x2, y2, diff, offset;
+        char found;
+        float fwidth;
+        unsigned char* graymap;
+        GLBitmapRGBA* bitmap;
+        
+        found = map:texture_frame_coords_for_key( the_texture , the_frame , the_coords , the_codepoint );
+
+        if ( found == 0 )
+        {
+
+            // get glyph width
+
+            stbtt_GetCodepointHMetrics( &font_info , the_codepoint , &width , 0 );
+
+            // get glyph bounding box
+            
+            stbtt_GetCodepoint_bitmapBox( &font_info , the_codepoint , font_scale , font_scale , &x1 , &y1 , &x2 , &y2 );
+            
+            // font_scale values
+
+            fwidth =  ( float ) width * font_scale;
+            asc = ( int ) roundf( ( float ) font_ascent * font_scale );
+            width = ( int ) roundf( fwidth );
+            height = ( int ) roundf( font_size );
+            
+            // calculate offset, align glyph to middle of bitmap
+            
+            if ( width < ( x2 - x1 ) ) width = x2 - x1;
+
+            diff = ( width - ( x2 - x1 ) ) >> 1;
+            offset = diff + ( asc + y1 ) * width;
+
+            // create grayscale bitmap and render glyph in it
+
+            graymap = calloc( width * height , sizeof( unsigned char* ) );
+            stbtt_MakeCodepoint_bitmap( &font_info , graymap + offset , x2 - x1 , y2 - y1 , width , font_scale , font_scale , the_codepoint );
+
+            // printf( "\nwidth %i height %i kerning %i font_ascent %i font_descent %i linefont_gap %i font_scale %f" , width , theHeight , kerning , font_ascent, font_descent, font_gap , font_scale );
+            
+            bitmap = GLBitmapRGBAUtils:create_bitmap_map_width_height_r_g_b( NULL , graymap , width , height , r , g , b );
+
+            map:add_bitmap_for_key( bitmap , the_codepoint );
+            map:texture_frame_coords_for_key( the_texture , the_frame , the_coords , the_codepoint );
+            
+            // cleanup
+            
+            bitmap:release( );
+            free( graymap );
+            
+        }
+
+        return 1;
+    
+    }
+    
+    
+    // returns kerning between code points
+    
+    char kerning_for_codeA_codeB(
+        float* the_kerning ,
+        int the_code_a ,
+        int the_code_b )
+    {
+    
+        int kerni;
+        float kernf;
+
+        kerni = stbtt_GetCodepointKernAdvance( &font_info , the_code_a , the_code_b );
+        kernf = ( float ) kerni * font_scale;
+        
+        *the_kerning = kernf;
+        
+        return 1;
+        
+    }
+
+}

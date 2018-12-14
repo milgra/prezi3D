@@ -1,0 +1,115 @@
+// Physics Library Vector
+//
+
+#include <math.h>
+#include "CLObject.clc"
+
+PLDXVector:CLObject
+{
+
+	float	x;
+	float	y;
+	float	angle;
+	float	length;
+	
+	// initializer
+
+    void init_x_y( float the_x , float the_y )
+    {
+	
+		// initialize super class
+	
+		CLObject:init( self );
+
+		x       = the_x;
+		y       = the_y;
+		angle   = atan2( y , x );
+		length  = sqrt( x * x + y * y );
+
+		// printf( "Vector init %li %f %f retain %li\n" , ( long ) self , the_x , the_y , retain_count );
+    
+    }
+
+
+	// initializer
+
+    void set_vector(PLDXVector* the_vector )
+    {
+
+//		printf( "Vector set %i %f %f\n" , ( int ) self , the_vector.x , the_vector.y );
+		
+		x       = the_vector.x;
+		y       = the_vector.y;
+		angle   = the_vector.angle;
+		length  = the_vector.length;
+    
+    }
+
+
+	// initializer
+
+    void set_x_y( float the_x , float the_y )
+    {
+
+//		printf( "Vector set_x_y %i %f %f\n" , ( int ) self , the_x , the_y );
+		
+		x       = the_x;
+		y       = the_y;
+		angle   = atan2( y , x );
+		length  = sqrt( x * x + y * y );
+    
+    }
+
+
+    // resetsCLVector
+
+    void reset( )
+    {
+
+//		printf( "Vector reset %i\n" , ( int ) self );
+
+        x       = 0;
+        y       = 0;
+        angle   = 0;
+        length  = 0;
+    
+    }
+    
+
+    // Multiplies theCLVector with the given scalar
+    
+    void multiply_value( float the_value )
+    {
+
+//		printf( "Vector multiply_value %i %f\n" , ( int ) self , the_value );
+
+        x       *= the_value;
+        y       *= the_value;
+        length  *= the_value;
+    
+    }
+    
+
+    // AddsCLVector
+
+    void add_vector(PLDXVector* the_vector )
+    {
+
+		// printf( "Vector add_vector %i %i\n" , ( int ) self , ( int ) the_vector );
+    
+        x       += the_vector.x;
+        y       += the_vector.y;
+		angle   = atan2( y , x );
+		length  = sqrt( x * x + y * y );
+    
+    }
+	
+	
+	// describes plvector
+	
+	void describe ( )
+	{
+		printf( "\nPLDXVector %f %f" , x , y );
+	}
+
+}

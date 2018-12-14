@@ -1,0 +1,111 @@
+#include "CLObject.clc"
+#include "GLBitmapRGBA.clc"
+
+
+
+GLTextureSquare:CLObject
+{
+
+
+    int width;
+    int height;
+    int tex_width;
+    int tex_height;
+    int virtual_width;
+
+    float r;
+    float g;
+    float b;
+    float a;
+    
+    float wRatio;
+    float hRatio;
+    
+    GLuint id;
+    GLuint key;
+    
+    
+    // constructor
+
+    void init_width_height( int the_width , int the_height )
+    {
+        
+        CLObject:init( self );
+        
+        r = 0.0;
+        g = 0.0;
+        b = 0.0;
+        a = 0.0;
+        
+        width = the_width;
+        height = the_height;
+
+        tex_width = 2;
+        tex_height = 2;
+        
+        while ( tex_width < width ) tex_width *= 2;
+        while ( tex_height < height ) tex_height *= 2;
+        
+        wRatio = ( float ) width / ( float ) tex_width;
+        hRatio = ( float ) height / ( float ) tex_height;
+        
+		glGenTextures( 1 , &id );
+		glBindTexture( GL_TEXTURE_2D , id );
+    
+		glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_WRAP_S	   , GL_CLAMP_TO_EDGE );
+		glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_WRAP_T	   , GL_CLAMP_TO_EDGE );
+		glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MAG_FILTER , GL_LINEAR );
+		glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MIN_FILTER , GL_LINEAR_MIPMAP_LINEAR );
+
+        glBindTexture( GL_TEXTURE_2D , 0 );
+    
+    }
+
+    
+    // destructor
+
+    void destruct( )
+    {
+
+		glDeleteTextures( 1 , &id );
+    
+        CLObject:destruct( self );
+    
+    }
+    
+    
+    // adds bitmap to the texture
+    
+    void clone_bitmap( GLBitmapRGBA* the_bitmap )
+    {
+
+        GLBitmapRGBA* texture;
+        
+        texture:alloc( );
+        texture:init_width_height( tex_width , tex_height );
+        texture:fill_sx_sy_ex_ey_r_g_b_a( 0 , 0 , tex_width , tex_height , r , g , b , a );
+        texture:blend_bitmap_x_y( the_bitmap , 0 , 0 );
+
+		glBindTexture( GL_TEXTURE_2D , id );
+
+		glTexImage2D(
+            GL_TEXTURE_2D ,
+            0 ,
+            GL_RGBA ,
+            tex_width ,
+            tex_height ,
+            0 ,
+            GL_RGBA ,
+            GL_UNSIGNED_BYTE ,
+            texture.data );
+        
+		glGenerateMipmap( GL_TEXTURE_2D );
+        
+        glBindTexture( GL_TEXTURE_2D , 0 );
+        
+        texture:release( );
+    
+    }
+
+
+}

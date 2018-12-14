@@ -1,0 +1,151 @@
+#include "MLVector3.h"
+#include "MLVector4.h"
+#include "MLMatrix4.h"
+#include "MLMatrix4Utils.h"
+#include "MLVector3Vector4.h"
+#include "GLUIElement.clc"
+#include "GLUITrafo.clc"
+#include "GLUITrafoAnimator.clc"
+#include "GLUITrafoAnimation.clc"
+
+
+#define kGLUIButtonPressed 0
+
+
+GLUIButton:GLUIElement
+{
+
+    unsigned char pressed;
+
+    CLObject* delegate;
+    GLUITrafo* actual_trafo;
+    GLUITrafoAnimator* animator;
+    GLUITrafoAnimation* animation;
+    
+
+    // constructor
+
+    void init_name_frame( char* the_name , MLVector4 the_frame )
+    {
+
+        GLUIElement:init_name_frame( self , the_name , the_frame );
+
+        pressed = 0;
+        delegate = NULL;
+        
+        animator:alloc( );
+        animator:init( );
+        
+        actual_trafo:alloc( );
+        actual_trafo:init( );
+
+    }
+
+
+    // destructor
+    
+    void destruct( )
+    {
+    
+        animator:release( );
+        actual_trafo:release( );
+    
+        GLUIElement:destruct( self );
+    
+    }
+
+    
+    // updates element
+    
+    void update( )
+    {
+
+        // update animator
+        
+        if ( animator.animation != NULL )
+        {
+        
+            needs_redraw = 1;
+            MLMatrix4 new_trafo = MLMatrix4CreateIdentity( );
+            new_trafo = MLMatrix4Translate( new_trafo , combined_origo.x + extent.x / 2, combined_origo.y + extent.y / 2 , 0 );
+            new_trafo = MLMatrix4Multiply( new_trafo , animator.animation.actual.matrix( ) );
+            new_trafo = MLMatrix4Translate( new_trafo , - combined_origo.x - extent.x / 2, - combined_origo.y - extent.y / 2 , 0 );
+            set_trafo( new_trafo , 0 );
+        
+            animator:update( );
+            
+        }
+        
+        GLUIElement:update( self );
+    
+    }
+    
+
+    // touch began
+
+    void touch_began( MLVector3 the_line_a , MLVector3 the_line_b )
+    {
+    
+        pressed = 1;
+        
+        GLUITrafo* new_trafo;
+        
+        new_trafo:alloc( );
+        new_trafo:init( );
+
+        (new_trafo.scale).x = 2.0;
+        (new_trafo.scale).y = 2.0;
+        
+        animation:alloc( );
+        animation:init_start_end_steps_easing( actual_trafo , new_trafo , 10 , 1 );
+        animator:add_animation( animation );
+        
+        actual_trafo.scale = new_trafo.scale;
+    
+    }
+
+
+    // touch end
+
+    void touch_ended(  MLVector3 the_line_a , MLVector3 the_line_b )
+    {
+    
+        if ( pressed )
+        {
+    
+            GLUITrafo* new_trafo;
+
+            new_trafo:alloc( );
+            new_trafo:init( );
+            
+            animation:alloc( );
+            animation:init_start_end_steps_easing( actual_trafo , new_trafo , 10 , 1 );
+            animation.delegate = ( CLObject* ) self;
+            animator:add_animation( animation );
+                    
+            actual_trafo.scale = new_trafo.scale;
+            
+            pressed = 0;
+
+        }
+        
+    }
+    
+    
+    // animation ended
+    
+    void event( int the_id , void* the_source , void* the_data )
+    {
+
+        if ( the_source == animation )
+        {
+            
+            set_trafo( actual_trafo:matrix( ) , 1 );
+            
+            if ( delegate != NULL ) delegate.event( kGLUIButtonPressed , self , NULL );
+        
+        }
+    
+    }
+
+}

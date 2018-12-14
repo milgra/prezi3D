@@ -1,0 +1,294 @@
+#include "CLLink.h"
+#include "MLVector3.h"
+#include "CLDataList.clc"
+#include "GLBitmapRGBA.clc"
+
+
+GLTextureMap:CLObject
+{
+
+
+    int width;
+    int height;
+    int row_height;
+    
+    int cursor_x;
+    int cursor_y;
+
+    CLDataList* keys;
+    CLDataList* names;
+    CLDataList* frames;
+    CLDataList* coords;
+
+    CLDataList* bitmaps;
+    CLDataList* names_by_bitmap;
+    
+
+    // constructor
+
+    void init_width_height( int theWidth , int theHeight )
+    {
+    
+        CLObject:init( self );
+        
+        // setup
+
+        width = theWidth;
+        height = theHeight;
+        row_height = 0;
+
+        cursor_x = 0;
+        cursor_y = 0;
+        
+        keys:alloc( );
+        keys:init( );
+        
+        names:alloc( );
+        names:init( );
+        
+        frames:alloc( );
+        frames:init( );
+        
+        coords:alloc( );
+        coords:init( );
+        
+        bitmaps:alloc( );
+        bitmaps:init( );
+
+        names_by_bitmap:alloc( );
+        names_by_bitmap:init( );
+        
+        create_bitmap_texture( );
+        
+    }
+
+
+    // destructor
+    
+    void destruct( )
+    {
+
+        for ( void* data : bitmaps )
+        {
+        
+            GLBitmapRGBA* bitmap = data;
+            bitmap:release( );
+        
+        }
+    
+        bitmaps:release( );
+    
+        for ( void* data : names_by_bitmap )
+        {
+        
+            GLuint* name = data;
+            glDeleteTextures( 1 , name );
+        
+        }
+
+        names_by_bitmap:release( );
+
+        for ( void* data : keys )
+        {
+        
+            int* key = data;
+            free( key );
+        
+        }
+
+        keys:release( );
+
+        for ( void* data : names )
+        {
+        
+            int* name = data;
+            free( name );
+        
+        }
+
+        names:release( );
+
+        for ( void* data : frames )
+        {
+        
+            MLVector4* frame = data;
+            free( frame );
+        
+        }
+
+        frames:release( );
+
+        for ( void* data : coords )
+        {
+        
+            MLVector4* coord = data;
+            free( coord );
+        
+        }
+
+        coords:release( );
+
+        CLObject:destruct( self );
+
+    }
+        
+    
+    // creates empty bitmap and texture and adds it to cache
+    
+    void create_bitmap_texture( )
+    {
+    
+        // printf( "\ncreate bitmap texture" );
+    
+        GLuint* name;
+        GLBitmapRGBA* bitmap;
+        
+        name = malloc( sizeof( GLuint ) );
+    
+        bitmap:alloc( );
+        bitmap:init_width_height( width , height );
+        
+		glGenTextures( 1 , name );
+		glBindTexture( GL_TEXTURE_2D , *name );
+    
+		glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_WRAP_S	   , GL_CLAMP_TO_EDGE );
+		glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_WRAP_T	   , GL_CLAMP_TO_EDGE );
+		glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MAG_FILTER , GL_LINEAR );
+		glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MIN_FILTER , GL_LINEAR_MIPMAP_LINEAR );
+        
+        glBindTexture( GL_TEXTURE_2D , 0 );
+        
+        bitmaps:add_data( bitmap );
+        names_by_bitmap:add_data( name );
+
+        cursor_x = 0;
+        cursor_y = 0;
+    
+    }
+
+
+    // returns frame and texture for key
+    
+    char texture_frame_coords_for_key(
+        GLuint* the_texture ,
+        MLVector4* the_frame ,
+        MLVector4* the_coords ,
+        int the_key )
+    {
+    
+        struct CLLink* key_link = keys.head;
+        struct CLLink* name_link = names.head;
+        struct CLLink* frame_link = frames.head;
+        struct CLLink* coord_link = coords.head;
+
+        while ( key_link != NULL )
+        {
+
+            int* key = ( int* ) ( key_link->data );
+            
+            if ( *key == the_key )
+            {
+
+                *the_frame = *( ( MLVector4* ) frame_link->data );
+                *the_coords = *( ( MLVector4* ) coord_link->data );
+                *the_texture = *( ( GLuint* ) name_link->data );
+                
+                return 1;
+            
+            }
+        
+            key_link = key_link->next;
+            name_link = name_link->next;
+            frame_link = frame_link->next;
+            coord_link = coord_link->next;
+        
+        }
+        
+        return 0;
+    
+    }
+
+
+    // places given bitmap in texture, returns normalized frame of final place
+
+    MLVector4 add_bitmap_for_key( GLBitmapRGBA* the_bitmap , int the_key )
+    {
+    
+        // printf( "\naddGLBitmapForKey key %i width %i height %i cursor x %i cursor y %i" , the_key , the_bitmap.width , the_bitmap.height , cursor_x , cursor_y );
+
+        // carriage return if needed
+    
+        if ( cursor_x + the_bitmap.width >= width )
+        {
+            cursor_y += row_height;
+            cursor_x = 0;
+            row_height = 0;
+        }
+
+        // new bitmap if needed
+
+        if ( cursor_y + the_bitmap.height >= height ) create_bitmap_texture( );
+        
+        GLuint* name = names_by_bitmap.last_data( );
+        GLBitmapRGBA* bitmap = bitmaps.last_data( );
+
+        // blend bitmap into big bitmap
+
+        bitmap:blend_bitmap_x_y( the_bitmap , cursor_x , cursor_y );
+        
+        // printf( "\nadding at %i %i" , cursor_x , cursor_y );
+        
+        // store frame name and key
+
+        MLVector4* bitmap_frame = malloc( sizeof( MLVector4 ) );
+        MLVector4* bitmap_coord = malloc( sizeof( MLVector4 ) );
+        int* bitmap_key = malloc( sizeof( int ) );
+        int* bitmap_texture = malloc( sizeof( GLuint ) );
+
+        bitmap_coord->x = ( float ) cursor_x / ( float ) bitmap.width;
+        bitmap_coord->y = ( float ) cursor_y / ( float ) bitmap.height;
+        bitmap_coord->z = ( ( float ) cursor_x + ( float ) the_bitmap.width ) / ( float ) bitmap.width;
+        bitmap_coord->w = ( ( float ) cursor_y + ( float ) the_bitmap.height ) / ( float ) bitmap.height;
+
+        bitmap_frame->x = ( float ) cursor_x;
+        bitmap_frame->y = ( float ) cursor_y;
+        bitmap_frame->z = ( float ) the_bitmap.width;
+        bitmap_frame->w = ( float ) -the_bitmap.height;
+
+        *bitmap_key = the_key;
+        *bitmap_texture = *name;
+
+        keys:add_data( bitmap_key );
+        names:add_data( bitmap_texture );
+        frames:add_data( bitmap_frame );
+        coords:add_data( bitmap_coord );
+        
+        // increase cursor
+
+        cursor_x += the_bitmap.width;
+        if ( row_height < the_bitmap.height ) row_height = the_bitmap.height;
+
+        // upload modified bitmap
+
+		glBindTexture( GL_TEXTURE_2D , *name );
+
+		glTexImage2D(
+            GL_TEXTURE_2D ,
+            0 ,
+            GL_RGBA ,
+            bitmap.width ,
+            bitmap.height ,
+            0 ,
+            GL_RGBA ,
+            GL_UNSIGNED_BYTE ,
+            bitmap.data );
+        
+		glGenerateMipmap( GL_TEXTURE_2D );
+        
+        glBindTexture( GL_TEXTURE_2D , 0 );
+        
+        return *bitmap_frame;
+
+    }
+
+}

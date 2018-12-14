@@ -1,0 +1,47 @@
+GLUITrafo:CLObject
+{
+
+
+    MLVector3 scale;
+    MLVector3 rotation;
+    MLVector3 translation;
+
+
+    void init( )
+    {
+    
+        CLObject:init( self );
+        
+        scale = MLVector3Create( 1.0 , 1.0 , 1.0 );
+        rotation = MLVector3Create( 0.0 , 0.0 , 0.0 );
+        translation = MLVector3Create( 0.0 , 0.0 , 0.0 );
+
+    }
+
+
+    MLMatrix4 matrix( )
+    {
+    
+        MLMatrix4 result = MLMatrix4CreateIdentity( );
+        result = MLMatrix4Translate( result , translation.x , translation.y , translation.z );
+        result = MLMatrix4Scale( result , scale.x , scale.y , scale.z );
+        result = MLMatrix4Rotate( result , rotation.z , 0.0 , 0.0 , 1.0 );
+        result = MLMatrix4Rotate( result , rotation.y , 0.0 , 1.0 , 0.0 );
+        result = MLMatrix4Rotate( result , rotation.x , 1.0 , 0.0 , 0.0 );
+
+        return result;
+    
+    }
+    
+    
+    void describe( )
+    {
+    
+        printf( "\nscale %f %f %f" , scale.x , scale.y , scale.z );
+        printf( "\nrotation %f %f %f" , rotation.x , rotation.y , rotation.z );
+        printf( "\ntranslation %f %f %f" , translation.x , translation.y , translation.z );
+
+    }
+
+
+}

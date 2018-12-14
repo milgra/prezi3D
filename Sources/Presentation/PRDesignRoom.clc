@@ -1,0 +1,159 @@
+#include "CLString.clc"
+#include "GLUIElement.clc"
+#include "PRController.clc"
+#include "PRInfoView.clc"
+#include "GLUITrafo.clc"
+#include "GLUIImageArea.clc"
+#include "GLBitmapRGBA.clc"
+#include "GLTextureSquare.clc"
+#include "GLBitmapRGBAUtils.clc"
+#include "GLUIParagraph.clc"
+#include "PRRoom.clc"
+
+
+PRDesignRoom:PRRoom
+{
+
+
+    void init_name_frame_controller(
+        char* the_name ,
+        MLVector4 the_frame ,
+        PRController* the_controller )
+    {
+    
+        PRRoom:init_name_frame_controller( self , the_name , the_frame , the_controller  );
+    
+        my_info_view:alloc( );
+        my_info_view:init_name_frame_controller(
+            "info_view" ,
+            MLVector4Create( 0 , 0 , 800 , -600 ) ,
+            the_controller );
+        my_info_view:set_color( 0,0,0,0 );
+        my_info_view:set_level( 60 );
+        my_info_view:set_title_label( "Room of Graphics" );
+        my_info_view:show( );
+    
+        add_element( ( GLUIElement* ) my_info_view );
+        
+        info_views:add_data( my_info_view );
+    
+    }
+    
+
+    void build( )
+    {
+        
+        create_image_area(
+            "wall_design.png" ,
+            600 ,
+            -600 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , M_PI / 2.0 , 0 ) ,
+            MLVector3Create( 0 , 0 , -200 )  );
+
+        create_image_area(
+            "wall_design.png" ,
+            800 ,
+            -600 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , 0 , 0 ) ,
+            MLVector3Create( 0 , 0 , -800 )  );
+
+        create_image_area(
+            "floor.png" ,
+            800 ,
+            -600 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( -M_PI / 2.0 , 0 , 0 ) ,
+            MLVector3Create( 0 , -600 , -800 )  );
+
+        create_image_area(
+            "table.png" ,
+            300 ,
+            -150 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( -M_PI/3 , M_PI/2 , 0 ) ,
+            MLVector3Create( 0 , -400 , -300 )  );
+
+        create_image_area(
+            "table.png" ,
+            300 ,
+            -120 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , M_PI/2 , 0 ) ,
+            MLVector3Create( 130 , -475 , -300 )  );
+
+        create_image_area(
+            "table.png" ,
+            400 ,
+            -125 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , 0 , 0 ) ,
+            MLVector3Create( 300 , -475 , -580 )  );
+
+        create_image_area(
+            "table.png" ,
+            400 ,
+            -220 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( -M_PI/2 , 0 , 0 ) ,
+            MLVector3Create( 300 , -475 , -800 )  );
+
+        create_image_area(
+            "monitor.png" ,
+            300 ,
+            -250 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , 0 , 0 ) ,
+            MLVector3Create( 350 , -230 , -700 )  );
+
+
+        create_empty_view(
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , M_PI / 3 , 0.0 ) ,
+            MLVector3Create( 0.0 , 0.0 , -200.0 ) );
+
+        create_info_view( "malom.png" , "malom.png" , "1990-1994" , "Elementary School" , "I was a gifted drawer as a child, so I took extra drawing classes in elementary school." ,
+            MLVector3Create( .15 , .15 , .15 ) ,
+            MLVector3Create( -M_PI/3 , M_PI/2 , 0.0 ) ,
+            MLVector3Create( 0.0 , -400.0 , -300.0 ) );
+
+        create_info_view( "drawings.png" , "drawings.png" , "1994-2001" , "More Drawings" , "I love to draw, but since 2001 programming is more exciting to me, so I rarely draw nowadays." ,
+            MLVector3Create( .18 , .18 , .18 ) ,
+            MLVector3Create( -M_PI/3 , M_PI / 2 , 0.0 ) ,
+            MLVector3Create( 0.0 , -400.0 , -440.0 ) );
+
+        create_info_view( "3d.png" , "3d.png" , "1994-1998" , "3D modelling" , "After getting a faster PC ( 486DX ), and the release of 3D Studio R3 I submerged in 3D modelling and graphics." ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( 0.0 , M_PI / 2 , 0.0 ) ,
+            MLVector3Create( 0.0 , -180.0 , -250.0 ) );
+        
+        create_info_view( "dtp.png" , "dtp.png" , "2001-2003" , "Desktop Publishing" , "In 2001 I started working as a dtp/flash/web designer, these are some of my advertising brochures." ,
+            MLVector3Create( .3 , .3 , .3 ) ,
+            MLVector3Create( 0.0 , M_PI / 2 , 0.0 ) ,
+            MLVector3Create( 0.0 , -30.0 , -400.0 ) );
+
+        create_info_view( "casino.png" , "casino.png" , "2001-2003" , "Gambling machine and casino decorations" , "I worked for a gambling/casino equipment factory back then, I did machine designs and smaller casino decorations." ,
+            MLVector3Create( .3 , .3 , .3 ) ,
+            MLVector3Create( 0.0 , M_PI / 2.0 , 0.0 ) ,
+            MLVector3Create( 0.0 , -220.0 , -550.0 ) );
+
+        create_empty_view(
+            MLVector3Create( .374 , .374 , .374 ) ,
+            MLVector3Create( 0 , 0 , 0 ) ,
+            MLVector3Create( 350 , -230 , -700 )  );
+
+        create_info_view( "web.png" , "web.png" , "2001-2003" , "Web Designs" , "I had to do a lot of kind of designs, but minimalism is my eternal love." ,
+            MLVector3Create( .15 , .15 , .15 ) ,
+            MLVector3Create( 0.0 , 0.0 , 0.0 ) ,
+            MLVector3Create( 360.0 , -250.0 , -700.0 ) );
+
+        create_info_view( "gameui.png" , "gameui.png" , "2005-" , "Game and UI Designs" , "Minimalism, minimalism, minimalism." ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( 0.0 , 0.0 , 0.0 ) ,
+            MLVector3Create( 480.0 , -280.0 , -700.0 ) );
+
+
+    }
+
+}

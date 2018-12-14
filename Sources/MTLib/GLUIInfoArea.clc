@@ -1,0 +1,117 @@
+#include "GLUIElement.clc"
+#include "GLUIParagraph.clc"
+
+
+#define kGLUIInfoAreaFinished 0
+#define kGLUIInfoAreaPressed  1
+
+
+GLUIInfoArea:GLUIElement
+{
+
+    float head;
+    float middle;
+    CLObject* delegate;
+    GLUIParagraph* paragraph;
+
+
+    // constructor
+
+    void init_name_frame( char* the_name , MLVector4 the_frame )
+    {
+    
+        GLUIElement:init_name_frame( self , the_name , the_frame );
+        
+        head = 0;
+        middle = 0;
+        delegate = NULL;
+        paragraph = NULL;
+
+    }
+    
+
+    // destructor
+    
+    void destruct( )
+    {
+    
+        remove_paragraph( );
+
+        GLUIElement:destruct( self );
+
+    }
+    
+    
+    // update
+    
+    void update( )
+    {
+    
+        GLUIElement:update( self );
+
+        if ( paragraph != NULL )
+        {
+
+            head -= 2;
+            needs_redraw = 1;
+            
+            paragraph:show_gylphs_between_x1_x2( -head , -head + extent.x );
+            paragraph:set_trafo( MLMatrix4CreateTranslation( origo.x + head , origo.y + middle , 0 ) , 0 );
+            
+            if ( head + (paragraph.extent).x < 0 )
+            {
+            
+                remove_element( ( GLUIElement* ) paragraph );
+                paragraph = NULL;
+                if ( delegate != NULL ) delegate.event( kGLUIInfoAreaFinished , self , NULL );
+    
+            }
+
+        }
+
+    }
+    
+    
+    // add paragraph
+    
+    void add_paragraph( GLUIParagraph* the_paragraph )
+    {
+    
+        paragraph = the_paragraph;
+        paragraph.accepts_mouse = 0;
+
+        head = extent.x;
+        middle = roundf( ( extent.y - (paragraph.extent).y ) / 2.0 );
+        paragraph:set_trafo( MLMatrix4CreateTranslation( origo.x + head , origo.y + middle , 0 ) , 0 );
+
+        add_element( ( GLUIElement* ) paragraph );
+        
+    }
+    
+    
+    // remove paragraph
+    
+    void remove_paragraph( )
+    {
+    
+        if ( paragraph != NULL )
+        {
+    
+            remove_element( ( GLUIElement* ) paragraph );
+            paragraph = NULL;
+            
+        }
+
+    }
+    
+    
+    // touch end
+
+    void touch_ended(  MLVector3 the_line_a , MLVector3 the_line_b )
+    {
+
+        if ( delegate != NULL ) delegate.event( kGLUIInfoAreaPressed , self , NULL );
+
+    }
+
+}

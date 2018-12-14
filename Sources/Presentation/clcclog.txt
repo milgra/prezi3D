@@ -1,0 +1,172 @@
+clcc 0.7 by Milan Toth
+
+-p ../../Sources/ 
+-p ../../Sources/MTLib/ 
+-p ../../Sources/Presentation/ 
+PRController.clc 
+-o ../../Sources/Presentation/ 
+
+compiling class PRController
+Reading PRController at ../../Sources/Presentation/PRController.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+WARNING : Unused classses : CLString GLUIImageArea GLUITrafo 
+PRController compiled
+compiling class CLString
+Reading CLString at ../../Sources/MTLib/CLString.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+CLString compiled
+compiling class CLObject
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+CLObject compiled
+compiling class CLDataList
+Reading CLDataList at ../../Sources/MTLib/CLDataList.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+CLDataList compiled
+compiling class PRLifeRoom
+Reading PRLifeRoom at ../../Sources/Presentation/PRLifeRoom.clc
+Reading PRRoom at ../../Sources/Presentation/PRRoom.clc
+Reading GLUIElement at ../../Sources/MTLib/GLUIElement.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+PRLifeRoom compiled
+compiling class PRSettings
+Reading PRSettings at ../../Sources/Presentation/PRSettings.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+PRSettings compiled
+compiling class PRMeasures
+Reading PRMeasures at ../../Sources/Presentation/PRMeasures.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+PRMeasures compiled
+compiling class PRInfoView
+Reading PRInfoView at ../../Sources/Presentation/PRInfoView.clc
+Reading GLUIElement at ../../Sources/MTLib/GLUIElement.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+PRInfoView compiled
+compiling class PRFontManager
+Reading PRFontManager at ../../Sources/Presentation/PRFontManager.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+PRFontManager compiled
+compiling class GLUIImageArea
+Reading GLUIImageArea at ../../Sources/MTLib/GLUIImageArea.clc
+Reading GLUIElement at ../../Sources/MTLib/GLUIElement.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLUIImageArea compiled
+compiling class GLUIElement
+Reading GLUIElement at ../../Sources/MTLib/GLUIElement.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLUIElement compiled
+compiling class GLUIController
+Reading GLUIController at ../../Sources/MTLib/GLUIController.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLUIController compiled
+compiling class GLUITrafo
+Reading GLUITrafo at ../../Sources/MTLib/GLUITrafo.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLUITrafo compiled
+compiling class PRCodingRoom
+Reading PRCodingRoom at ../../Sources/Presentation/PRCodingRoom.clc
+Reading PRRoom at ../../Sources/Presentation/PRRoom.clc
+Reading GLUIElement at ../../Sources/MTLib/GLUIElement.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+WARNING : Unused classses : GLUIParagraph 
+PRCodingRoom compiled
+compiling class PRDesignRoom
+Reading PRDesignRoom at ../../Sources/Presentation/PRDesignRoom.clc
+Reading PRRoom at ../../Sources/Presentation/PRRoom.clc
+Reading GLUIElement at ../../Sources/MTLib/GLUIElement.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+WARNING : Unused classses : GLBitmapRGBA GLBitmapRGBAUtils GLUIParagraph 
+PRDesignRoom compiled
+compiling class PRMusicRoom
+Reading PRMusicRoom at ../../Sources/Presentation/PRMusicRoom.clc
+Reading PRRoom at ../../Sources/Presentation/PRRoom.clc
+Reading GLUIElement at ../../Sources/MTLib/GLUIElement.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+WARNING : Unused classses : GLBitmapRGBA GLBitmapRGBAUtils 
+PRMusicRoom compiled
+compiling class PRRoom
+Reading PRRoom at ../../Sources/Presentation/PRRoom.clc
+Reading GLUIElement at ../../Sources/MTLib/GLUIElement.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+WARNING : Unused classses : GLBitmapRGBA GLBitmapRGBAUtils 
+PRRoom compiled
+compiling class GLBitmapRGBA
+Reading GLBitmapRGBA at ../../Sources/MTLib/GLBitmapRGBA.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLBitmapRGBA compiled
+compiling class GLTextureSquare
+Reading GLTextureSquare at ../../Sources/MTLib/GLTextureSquare.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLTextureSquare compiled
+compiling class GLBitmapRGBAUtils
+Reading GLBitmapRGBAUtils at ../../Sources/MTLib/GLBitmapRGBAUtils.clc
+GLBitmapRGBAUtils compiled
+compiling class GLUIModel
+Reading GLUIModel at ../../Sources/MTLib/GLUIModel.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLUIModel compiled
+compiling class GLUIModelDrawer
+Reading GLUIModelDrawer at ../../Sources/MTLib/GLUIModelDrawer.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLUIModelDrawer compiled
+compiling class GLUIParagraph
+Reading GLUIParagraph at ../../Sources/MTLib/GLUIParagraph.clc
+Reading GLUIElement at ../../Sources/MTLib/GLUIElement.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLUIParagraph compiled
+compiling class GLUITrafoAnimator
+Reading GLUITrafoAnimator at ../../Sources/MTLib/GLUITrafoAnimator.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLUITrafoAnimator compiled
+compiling class GLUITrafoAnimation
+Reading GLUITrafoAnimation at ../../Sources/MTLib/GLUITrafoAnimation.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLUITrafoAnimation compiled
+compiling class GLFontTrueType
+Reading GLFontTrueType at ../../Sources/MTLib/GLFontTrueType.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLFontTrueType compiled
+compiling class GLUIShader
+Reading GLUIShader at ../../Sources/MTLib/GLUIShader.clc
+Reading GLShader at ../../Sources/MTLib/GLShader.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLUIShader compiled
+compiling class TLPixelFont
+Reading TLPixelFont at ../../Sources/MTLib/TLPixelFont.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+TLPixelFont compiled
+compiling class TLPixelText
+Reading TLPixelText at ../../Sources/MTLib/TLPixelText.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+TLPixelText compiled
+compiling class GLUIVertexArray
+Reading GLUIVertexArray at ../../Sources/MTLib/GLUIVertexArray.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLUIVertexArray compiled
+compiling class GLUICursor
+Reading GLUICursor at ../../Sources/MTLib/GLUICursor.clc
+Reading GLUIElement at ../../Sources/MTLib/GLUIElement.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLUICursor compiled
+compiling class GLUIGlyph
+Reading GLUIGlyph at ../../Sources/MTLib/GLUIGlyph.clc
+Reading GLUIElement at ../../Sources/MTLib/GLUIElement.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLUIGlyph compiled
+compiling class TLTextMetrics
+Reading TLTextMetrics at ../../Sources/MTLib/TLTextMetrics.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+TLTextMetrics compiled
+compiling class TLFontMetrics
+Reading TLFontMetrics at ../../Sources/MTLib/TLFontMetrics.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+TLFontMetrics compiled
+compiling class GLTextureMap
+Reading GLTextureMap at ../../Sources/MTLib/GLTextureMap.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLTextureMap compiled
+compiling class GLShader
+Reading GLShader at ../../Sources/MTLib/GLShader.clc
+Reading CLObject at ../../Sources/MTLib/CLObject.clc
+GLShader compiled
+Writing header to ../../Sources/Presentation/clcsrc.h
+Writing implementation to ../../Sources/Presentation/clcsrc.c

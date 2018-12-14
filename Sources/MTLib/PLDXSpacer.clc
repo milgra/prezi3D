@@ -1,0 +1,118 @@
+#include "CLObject.clc"
+#include "PLDXVector.clc"
+#include "PLDXMass.clc"
+
+PLDXSpacer:CLObject
+{
+
+	PLDXMass*	mass_a;
+	PLDXMass*	mass_b;
+	float       space;
+
+	PLDXVector* respace_vector_a;
+	PLDXVector* respace_vector_b;
+
+
+	// constructor
+
+	void init_mass_a_mass_b(	PLDXMass* the_mass_a , 
+                                PLDXMass* the_mass_b )
+	{
+	
+		float dx, dy;
+
+		// printf( "\nSpacer init %i" , ( int ) self );
+
+		CLObject:init( self );
+	
+		mass_a = the_mass_a;
+		mass_b = the_mass_b;
+		
+		mass_a.retain( );
+		mass_b.retain( );
+
+        respace_vector_a = PLDXVector:alloc( );
+        respace_vector_b = PLDXVector:alloc( );
+		
+		respace_vector_a:init_x_y( 0 , 0 );
+		respace_vector_b:init_x_y( 0 , 0 );
+		
+		// calculate space
+		
+		dx = mass_a.position.x - mass_b.position.x;
+		dy = mass_a.position.y - mass_b.position.y;
+		
+		space = sqrt( dx * dx + dy * dy );
+    
+    }
+	
+	
+	// destructor
+	
+	void destruct ( )
+	{
+	
+		// printf( "\nSpacer destruct %i" , ( int ) self );
+
+		mass_a.release( );
+		mass_b.release( );
+		
+		respace_vector_a.release( );
+		respace_vector_b.release( );
+
+		CLObject:destruct( self );
+		
+	}
+
+
+	// respaces masses
+
+    void respace( )
+    {
+	
+		float dx, dy, delta;
+
+		// printf( "Spacer respace %i\n" , ( int ) self );
+
+		// calculate actual space
+
+        dx = mass_b.position.x + mass_b.force.x - ( mass_a.position.x + mass_a.force.x );
+        dy = mass_b.position.y + mass_b.force.y - ( mass_a.position.y + mass_a.force.y );
+		
+		respace_vector_a:set_x_y( dx , dy );
+		respace_vector_b:set_x_y( dx , dy );
+
+//        if ( mass_a.base_walls.length == 0 && 
+//             mass_b.base_walls.length == 0 )
+//        {
+        
+            delta = ( respace_vector_a.length - space ) / 3;
+			
+			respace_vector_a:multiply_value(  delta / respace_vector_a.length );
+			respace_vector_b:multiply_value( -delta / respace_vector_b.length );
+			
+			PLDXVector:add_vector( mass_a.force , respace_vector_a );
+			PLDXVector:add_vector( mass_b.force , respace_vector_b );
+        
+//        }
+//        else if ( mass_a.base_walls.length > 0 )
+//        {
+//        
+//           vectorB.multiply_value( - space /CLVectorB.length );
+//			struct PLDXVector* mass_bforce = mass_b.force;
+//            mass_bforce.add_vector(CLVectorB );
+//        
+//        }
+//        else
+//        {
+//        
+//           vectorA.multiply_value( space /CLVectorB.length );
+//			struct PLDXVector* mass_aforce = mass_a.force;
+//			mass_aforce.add_vector(CLVectorA );
+//        
+//        }
+//
+    
+    }
+	
+}

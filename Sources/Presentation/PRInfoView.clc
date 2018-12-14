@@ -1,0 +1,319 @@
+#include "GLUIElement.clc"
+#include "GLUIParagraph.clc"
+#include "GLUIImageArea.clc"
+#include "GLUITrafo.clc"
+#include "GLUITrafoAnimator.clc"
+#include "GLUITrafoAnimation.clc"
+#include "PRController.clc"
+
+
+PRInfoView:GLUIElement
+{
+
+    GLUIElement* background;
+    GLUIImageArea* picture;
+    GLUIParagraph* title;
+    GLUIParagraph* subtitle;
+    GLUIParagraph* description;
+    PRController* controller;
+    GLUITrafoAnimator* animator;
+    
+    char hidden;
+    char info_shown;
+    char* small_path;
+    char* large_path;
+
+
+    void init_name_frame_controller(
+        char* the_name ,
+        MLVector4 the_frame ,
+        PRController* the_controller )
+    {
+    
+        GLUIElement:init_name_frame( self , the_name , the_frame );
+        
+        controller = the_controller;
+        
+        hidden = 0;
+        info_shown = 0;
+        picture = NULL;
+        small_path = NULL;
+        large_path = NULL;
+        
+        animator:alloc( );
+        animator:init( );
+
+        background:alloc( );
+        background:init_name_frame( 
+            "PRInfoView.background" , 
+            MLVector4Create( 
+                controller.measures.border , 
+                -controller.measures.border ,
+                extent.x - 2 * controller.measures.border ,
+                extent.y + 2 * controller.measures.border ) );
+        background:set_color( 0,0,0,.5 );
+        background:set_level( 1 );
+        
+        title:alloc( );
+        title:init_name_frame_font_type_align_multiline(
+            "PRInfoView.title" ,
+            MLVector4Create(
+                controller.measures.border ,
+                -controller.measures.border - controller.measures.header_height ,
+                extent.x - 2 * controller.measures.border ,
+                -controller.measures.header_height ) ,
+            controller.font_manager.font_for_name_size_r_g_b( "Avenir.ttc" , controller.measures.header_height , 255 , 255 , 255 ) ,
+            kGLUIParagraphTypeOutput ,
+            kTLTextMetricsAlignCenter ,
+            1 );
+        title:set_color( 0,0,0,0 );
+        title:set_level( 2 );
+        
+
+        subtitle:alloc( );
+        subtitle:init_name_frame_font_type_align_multiline(
+            "PRInfoView.subtitle" ,
+            MLVector4Create(
+                controller.measures.border ,
+                -controller.measures.border - controller.measures.header_height * 2 ,
+                extent.x - 2 * controller.measures.border ,
+                -controller.measures.header_height ) ,
+            controller.font_manager.font_for_name_size_r_g_b( "Avenir.ttc" , controller.measures.header_font_size , 255 , 255 , 255 ) ,
+            kGLUIParagraphTypeOutput ,
+            kTLTextMetricsAlignCenter ,
+            1 );
+        subtitle:set_color( 0,0,0,0 );
+        subtitle:set_level( 2 );
+
+
+        description:alloc( );
+        description:init_name_frame_font_type_align_multiline(
+            "PRInfoView.description" ,
+            MLVector4Create(
+                controller.measures.border * 2 ,
+                -controller.measures.border - controller.measures.header_height * 3 ,
+                extent.x - 4 * controller.measures.border ,
+                extent.y - 3 * controller.measures.header_height ) ,
+            controller.font_manager.font_for_name_size_r_g_b( "Avenir.ttc" , controller.measures.header_font_size , 255 , 255 , 255 ) ,
+            kGLUIParagraphTypeOutput ,
+            kTLTextMetricsAlignCenter ,
+            1 );
+        description:set_color( 0,0,0,0 );
+        description:set_level( 2 );
+        
+
+    }
+    
+    void destruct( )
+    {
+    
+        description:release( );
+        subtitle:release( );
+        title:release( );
+        background:release( );
+        animator:release( );
+        
+        if ( picture != NULL ) picture:release( );
+    
+        if ( small_path != NULL ) free( small_path );
+        if ( large_path != NULL ) free( large_path );
+        
+        GLUIElement:destruct( self );
+    
+    }
+    
+    void set_title_label( char* the_label )
+    {
+    
+        title:add_text( the_label );
+    
+    }
+
+    void set_subtitle_label( char* the_label )
+    {
+
+        subtitle:add_text( the_label );
+    
+    }
+
+    void set_description_label( char* the_label )
+    {
+
+        description:add_text( the_label );
+
+    }
+    
+    void show( )
+    {
+    
+        if ( hidden == 1 ) return;
+
+        info_shown = 1;
+    
+        add_element( ( GLUIElement* ) background );
+        add_element( ( GLUIElement* ) title );
+        add_element( ( GLUIElement* ) subtitle );
+        add_element( ( GLUIElement* ) description );
+
+    }
+    
+    void show_with_animation( )
+    {
+    
+        if ( hidden == 1 ) return;
+
+        info_shown = 1;
+    
+        GLUITrafo* old_trafo;
+        GLUITrafo* new_trafo;
+
+        old_trafo:alloc( );
+        old_trafo:init( );
+        
+        new_trafo:alloc( );
+        new_trafo:init( );
+        
+        (old_trafo.scale).x = .1;
+        (old_trafo.scale).y = .1;
+        
+        GLUITrafoAnimation* the_animation;
+        
+        the_animation:alloc( );
+        the_animation:init_start_end_steps_easing(
+            old_trafo ,
+            new_trafo ,
+            50 ,
+            kGLUIAnimationEaseIn );
+        the_animation.delegate = ( CLObject* ) self;
+
+        animator:add_animation( the_animation );
+
+        MLMatrix4 matrix = MLMatrix4CreateIdentity( );
+        matrix = MLMatrix4Translate( matrix , (background.combined_origo).x + (background.extent).x / 2, (background.combined_origo).y + (background.extent).y / 2 , 0 );
+        matrix = MLMatrix4Multiply( matrix , old_trafo:matrix( ) );
+        matrix = MLMatrix4Translate( matrix , -(background.combined_origo).x - (background.extent).x / 2, - (background.combined_origo).y - (background.extent).y / 2 , 0 );
+
+        background:set_trafo( matrix , 0 );
+        add_element( ( GLUIElement* ) background );
+        
+        add_element( ( GLUIElement* ) title );
+        title:animate_glyphs( );
+        
+        add_element( ( GLUIElement* ) subtitle );
+        subtitle:animate_glyphs( );
+        
+        // cleanup
+        
+        old_trafo:release( );
+        new_trafo:release( );
+        the_animation:release( );
+    
+    }
+    
+    
+    void hide( )
+    {
+
+        if ( hidden == 1 ) return;
+
+        info_shown = 0;
+        needs_redraw = 1;
+            
+        remove_element( ( GLUIElement* ) background );
+        
+        remove_element( ( GLUIElement* ) title );
+        
+        remove_element( ( GLUIElement* ) subtitle );
+
+        remove_element( ( GLUIElement* ) description );
+    
+    }
+    
+    
+    void load_large( )
+    {
+    
+        set_image( large_path );
+    
+    }
+    
+    
+    void set_image( char* the_image )
+    {
+    
+        if ( picture != NULL && picture.parent != NULL ) remove_element( ( GLUIElement* ) picture );
+    
+        picture:alloc( );
+        picture:init_name_frame_path( "GLUIListSquare.ui_image" , MLVector4Create( 50 , -50 , extent.x - 100 , extent.y + 100 ) , the_image );
+        
+        float wthdiff = (picture.extent).x / ( float ) picture.bitmap.width;
+        float hthdiff = -(picture.extent).y / ( float ) picture.bitmap.height;
+        
+        if ( fabs( wthdiff ) < fabs( hthdiff ) )
+        {
+        
+            float ratio = (picture.extent).x / ( float ) picture.bitmap.width;
+
+            picture.set_extent( MLVector3Create( ( float ) picture.bitmap.width * ratio  , - ( float ) picture.bitmap.height * ratio , 0 ) );
+        
+        }
+        else
+        {
+
+            float ratio = -(picture.extent).y / ( float ) picture.bitmap.height;
+
+            picture.set_extent( MLVector3Create( ( float ) picture.bitmap.width * ratio  , - ( float ) picture.bitmap.height * ratio , 0 ) );
+        
+        }
+        
+        picture:set_origo(
+            MLVector3Create(
+            50 + ( extent.x - 100.0 - (picture.extent).x ) / 2 ,
+            50 + ( extent.y - 100.0 - (picture.extent).y ) / 2 ,
+            0 ) );
+            
+        add_element( ( GLUIElement* ) picture );
+
+    }
+    
+    
+    // updates element
+    
+    void update( )
+    {
+
+        // update animator
+        
+        if ( animator.animation != NULL )
+        {
+
+            needs_redraw = 1;
+            MLMatrix4 new_trafo = MLMatrix4CreateIdentity( );
+            new_trafo = MLMatrix4Translate( new_trafo , (background.combined_origo).x + (background.extent).x / 2, (background.combined_origo).y + (background.extent).y / 2 , 0 );
+            new_trafo = MLMatrix4Multiply( new_trafo , animator.animation.actual.matrix( ) );
+            new_trafo = MLMatrix4Translate( new_trafo , -(background.combined_origo).x - (background.extent).x / 2, - (background.combined_origo).y - (background.extent).y / 2 , 0 );
+            background.set_trafo( new_trafo , 0 );
+
+            animator:update( );
+            
+        }
+        
+        GLUIElement:update( self );
+    
+    }
+    
+    
+    void event ( int the_id , void* the_source , void* the_data )
+    {
+    
+        if ( the_id == kGLUIAnimationFinished )
+        {
+        
+            add_element( ( GLUIElement* ) description );
+            description:animate_glyphs( );
+        
+        }
+    
+    }
+
+}

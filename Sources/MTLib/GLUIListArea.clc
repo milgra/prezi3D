@@ -1,0 +1,225 @@
+#include "MLVector3.h"
+#include "PLScroller.clc"
+#include "CLDataList.clc"
+#include "GLUIElement.clc"
+#include "GLUIListAreaBase.clc"
+
+
+#define kGLUIListAreaSelect 0
+
+
+GLUIListArea:GLUIElement
+{
+
+    char pressed;
+
+    float delta;
+    float cursorX;
+    float cursorY;
+    float last_touch;
+    float last_height;
+    
+    CLObject* delegate;
+    PLScroller* scroller;
+    GLUIListAreaBase* scroll_base;
+
+
+    // init with heading - upside down or downside up
+
+    void init_name_frame( char* the_name , MLVector4 the_frame )
+    {
+
+        GLUIElement:init_name_frame( self , the_name , the_frame );
+
+        pressed = 0;
+        
+        delta = 0;
+        cursorX = 0;
+        cursorY = 0;
+        last_touch = 0;
+        last_height = 0;
+        
+        delegate = NULL;
+        
+        scroller:alloc( );
+        scroller:init( );
+        
+        scroll_base:alloc( );
+        scroll_base:init_name_frame( "GLUIListArea.scroll_base" , MLVector4Create( 0 , 0 , extent.x , extent.y ) );
+        scroll_base:set_color( .4 , .6 , .4 , .5 );
+    
+        scroller.visible_size = -the_frame.w;
+        scroller.content_size = 0;
+        
+        add_element( ( GLUIElement* ) scroll_base );
+
+    }
+    
+    
+    // destructor
+    
+    void destruct( )
+    {
+    
+        scroller:release( );
+        scroll_base:release( );
+    
+        GLUIElement:destruct( self );
+    
+    }
+
+
+    // adds element
+    
+    void add_item( GLUIElement* the_element )
+    {
+    
+        // inital content size is list area size to maintain smooth bouncing even with one element
+        
+        if ( scroller.content_size == 0 ) scroller.content_size = fabs( (the_element.extent).y );
+        
+        // update cursor
+
+        if ( cursorX + (the_element.extent).x > extent.x )
+        {
+
+            cursorX = origo.x;
+            cursorY += last_height;
+            scroller.content_size += fabs( (the_element.extent).y );
+            
+            last_height = 0;
+            
+        }
+        
+        // set element position
+        
+        the_element:set_origo( MLVector3Create( cursorX , cursorY , 0 ) );
+        
+        // increase cursor
+
+        cursorX += (the_element.extent).x;
+        
+        // store height of element as line height
+        
+        last_height = (the_element.extent).y;
+        
+        // add element to base
+        
+        scroll_base:add_element( the_element );
+        
+        // increase base size
+        
+        if ( (scroll_base.extent).y != cursorY ) scroll_base:set_extent( MLVector3Create( (extent).x , last_height , 0 ) );
+
+    }
+
+
+    // updates simulation
+
+    void update( )
+    {
+    
+        GLUIElement:update( self );
+        
+        if ( scroller.active == 1 )
+        {
+        
+            // move to origo to let the transformation do the trick during scrolling
+        
+            if ( scroll_base.trafo == NULL ) scroll_base:set_origo( MLVector3Create( (scroll_base.origo).x , 0 , 0 ) );
+        
+            scroller:update( );
+            
+            scroll_base:set_trafo( MLMatrix4CreateTranslation( 0 , -roundf( scroller.content_head ) , 0 ) , 0 );
+
+            needs_redraw = 1;
+
+        }
+        else if ( scroll_base.trafo != NULL )
+        {
+        
+            // move to transformed position
+            
+            scroll_base:set_origo( MLVector3Create( (scroll_base.origo).x , -roundf( scroller.content_head ) , 0 ) );
+            scroll_base:set_trafo( MLMatrix4CreateIdentity( ) , 1 );
+
+            needs_redraw = 1;
+        
+        }
+        
+    }
+
+
+    // scroll event
+
+    void scroll_x_y( float the_x , float the_y )
+    {
+    
+        scroller.scroll_delta_auto( the_y * 3.0 , 1 );
+        needs_redraw = 1;
+
+    }
+
+    
+    // touch events
+    
+    void touch_began( MLVector3 the_line_a , MLVector3 the_line_b )
+    {
+    
+        MLVector3 touch = get_relative_touch_line_a_line_b( the_line_a , the_line_b );
+    
+        delta = 0;
+        pressed = 1;
+        last_touch = touch.y;
+    
+    }
+    
+
+    void touch_moved( MLVector3 the_line_a , MLVector3 the_line_b )
+    {
+    
+        MLVector3 touch = get_relative_touch_line_a_line_b( the_line_a , the_line_b );
+
+        delta = touch.y - last_touch;
+        pressed = 0;
+        last_touch = touch.y;
+        
+        scroller:scroll_delta_auto( -delta , 0 );
+    
+    }
+    
+    
+    void touch_ended( MLVector3 the_line_a , MLVector3 the_line_b )
+    {
+
+        MLVector3 touch = get_relative_touch_line_a_line_b( the_line_a , the_line_b );
+    
+        scroller:scroll_delta_auto( -delta , 1 );
+        
+        if ( pressed )
+        {
+        
+            // find pressed element
+        
+            for ( void* kidData : scroll_base.kids )
+            {
+            
+                GLUIElement* kid = kidData;
+                
+                if ( (kid.origo).x < touch.x &&
+                     (kid.origo).x + (kid.extent).x > touch.x &&
+                     (kid.origo).y - scroller.content_head > touch.y &&
+                     (kid.origo).y + (kid.extent).y - scroller.content_head < touch.y )
+                {
+                
+                    if ( delegate != NULL ) delegate.event( kGLUIListAreaSelect , self , kid );
+                
+                }
+            
+            }
+        
+        }
+
+    }
+    
+}

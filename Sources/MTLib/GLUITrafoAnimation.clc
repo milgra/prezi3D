@@ -1,0 +1,142 @@
+#include "CLObject.clc"
+#include "GLUITrafo.clc"
+
+
+#define kGLUIAnimationLinear  0
+#define kGLUIAnimationEaseIn  1
+#define kGLUIAnimationEaseOut 2
+
+#define kGLUIAnimationFinished 0
+
+
+GLUITrafoAnimation:CLObject
+{
+
+    int needed_steps;
+    int actual_steps;
+
+    char easing;
+    char finished;
+
+    GLUITrafo* step;
+    GLUITrafo* delta;
+    GLUITrafo* actual;
+    CLObject* delegate;
+
+
+    // constructor
+
+    void init_start_end_steps_easing(
+        GLUITrafo*  the_start ,
+        GLUITrafo*  the_end ,
+        int         the_steps ,
+        char        the_easing )
+    {
+
+        int index, iterations;
+
+        CLObject:init( self );
+    
+        easing = the_easing;
+        finished = 0;
+        delegate = NULL;
+        
+        actual_steps = 0;
+        needed_steps = the_steps > 0 ? the_steps : 1;
+        
+        iterations = needed_steps;
+
+        if ( easing == kGLUIAnimationEaseIn || easing == kGLUIAnimationEaseOut )
+        {
+
+            iterations = 0;
+
+            for ( index = 0 ; index < needed_steps + 1; index++ ) iterations += index;
+
+        }
+
+        step:alloc( ); step:init( );
+        delta:alloc( ); delta:init( );
+        actual:alloc( ); actual:init( );
+
+        actual.scale = the_start.scale;
+        actual.rotation = the_start.rotation;
+        actual.translation = the_start.translation;
+        
+        delta.scale = MLVector3Sub( the_end.scale , actual.scale );
+        delta.rotation = MLVector3Sub( the_end.rotation , actual.rotation );
+        delta.translation = MLVector3Sub( the_end.translation , actual.translation );
+
+        delta.scale = MLVector3Scale( delta.scale , 1.0 / ( float ) iterations );
+        delta.rotation = MLVector3Scale( delta.rotation , 1.0 / ( float ) iterations );
+        delta.translation = MLVector3Scale( delta.translation , 1.0 / ( float ) iterations );
+        
+        step.scale = delta.scale;
+        step.rotation = delta.rotation;
+        step.translation = delta.translation;
+
+        if ( easing == kGLUIAnimationEaseIn )
+        {
+
+            step.scale = MLVector3Scale( step.scale , needed_steps );
+            step.rotation = MLVector3Scale( step.rotation , needed_steps );
+            step.translation = MLVector3Scale( step.translation , needed_steps );
+
+        }
+
+    }
+    
+    
+    // destructor
+    
+    void destruct( )
+    {
+    
+        step:release( );
+        delta:release( );
+        actual:release( );
+    
+        CLObject:destruct( self );
+    
+    }
+
+
+    // updates animation
+    
+    void update( )
+    {
+
+        actual.scale = MLVector3Add( actual.scale , step.scale );
+        actual.rotation = MLVector3Add( actual.rotation , step.rotation );
+        actual.translation = MLVector3Add( actual.translation , step.translation );
+
+        if ( easing == kGLUIAnimationEaseOut )
+        {
+
+            step.scale = MLVector3Add( step.scale , delta.scale );
+            step.rotation = MLVector3Add( step.rotation , delta.rotation );
+            step.translation = MLVector3Add( step.translation , delta.translation );
+
+        }
+        else if ( easing == kGLUIAnimationEaseIn )
+        {
+
+            step.scale = MLVector3Sub( step.scale , delta.scale );
+            step.rotation = MLVector3Sub( step.rotation , delta.rotation );
+            step.translation = MLVector3Sub( step.translation , delta.translation );
+
+        }
+        
+        if ( actual_steps == needed_steps )
+        {
+
+            finished = 1;
+            if ( delegate != NULL ) delegate.event( kGLUIAnimationFinished , self , NULL );
+
+        }
+
+        actual_steps += 1;
+    
+    }
+
+}

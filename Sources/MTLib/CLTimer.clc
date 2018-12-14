@@ -1,0 +1,58 @@
+#include "CLThread.clc"
+
+
+#define kCLTimerEventTimer 0
+
+
+CLTimer:CLThread
+{
+
+    
+    long nanoseconds;
+    CLObject* delegate;
+
+
+    void init( long the_nanoseconds )
+    {
+    
+        CLThread:init( self );
+        
+        nanoseconds = the_nanoseconds;
+        delegate = NULL;
+    
+    }
+    
+    
+    void stop( )
+    {
+    
+        alive = 0;
+    
+    }
+    
+
+	void* run( )
+	{
+
+		struct timespec delay = {0};
+		
+		delay.tv_sec = 0;
+		delay.tv_nsec = nanoseconds;
+	
+		while ( alive == 1 )
+		{
+        
+            if ( delegate != NULL ) delegate.event( kCLTimerEventTimer , self , NULL );
+			nanosleep( &delay , (struct timespec *)NULL );
+			
+		}
+		
+		release( );
+		
+		pthread_exit( NULL );
+		
+		return NULL;
+	
+	}
+
+}

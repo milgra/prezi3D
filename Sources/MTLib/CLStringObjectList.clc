@@ -1,0 +1,237 @@
+//
+//  utilities for object list and string class
+//
+
+
+#include "CLString.clc"
+#include "CLObject.clc"
+#include "CLObjectList.clc"
+
+
+CLStringObjectList:CLObject
+{
+
+
+	// checks if string is in list
+
+	char contains_string( CLString* the_string ,
+						 CLObjectList* the_object_list )
+	{
+	
+		CLString* string;
+		struct CLLink* link;
+		
+		link = the_object_list.head;
+				
+		while ( link != NULL )
+		{
+			
+			string = ( CLString* ) link->data;
+
+			if ( the_string.equals_string( string ) == 1 ) return 1;
+
+			link = link->next;
+					
+		}
+		
+		return 0;
+	
+	}
+
+
+	// checks if list contains string
+
+	unsigned long index_string_objectList( 
+        CLString*		the_string ,
+		CLObjectList*	the_object_list )
+	{
+	
+		CLString* string;
+		unsigned long index;
+		struct CLLink* link;
+		
+		// init
+
+		index = 0;
+		link = the_object_list.head;
+				
+		while ( link != NULL )
+		{
+			
+			string = ( CLString* ) link->data;
+
+			if ( the_string.equals_string( string ) == 1 ) return index;
+
+			index += 1;
+			
+			link = link->next;
+					
+		}
+		
+		return 0;
+
+	}
+    
+	
+	// removes given string from object list
+    
+    void remove_string_objectList(
+        CLString*	  the_string ,
+		CLObjectList* the_object_list )
+    {
+    
+        CLObject* result;
+		CLString* string;
+		struct CLLink* link;
+
+		// init
+
+		link = the_object_list.head;
+		result = NULL;
+				
+		while ( link != NULL )
+		{
+
+			string = ( CLString* ) link->data;
+
+			if ( the_string.equals_string( string ) == 1 )
+            {
+                result = link->data;
+                break;
+            }
+			
+			link = link->next;
+					
+		}
+		
+        if ( result != NULL ) the_object_list.remove_object( result );
+    
+    }
+	    
+	
+	// removes given strings from object list
+    
+    void remove_strings_objectList( 
+        CLObjectList* the_string_list ,
+        CLObjectList* the_object_list )
+    {
+    
+		CLString* string;
+		struct CLLink* link;
+		
+		link = the_string_list.head;
+        
+        while( link != NULL )
+        {
+        
+			string = ( CLString* ) link->data;
+            removeString( string , the_object_list );
+            link = link->next;
+        
+        }
+    
+    }
+    
+	
+	// adds string to list if it's not exist
+    
+    void add_unique_string_in_object_list(	
+        CLString*		the_string ,
+		CLObjectList*	the_object_list )
+    {
+
+        char contains;
+		
+		// init
+		
+		contains = contains_string( the_string , the_object_list );
+        if ( contains == 0 ) the_object_list.add_object( ( CLObject* ) the_string );
+    
+    }
+
+    
+	// adds strings to list if they're not exist
+    
+    void add_unique_strings_in_object_list( 
+        CLObjectList* the_string_list ,
+        CLObjectList* the_object_list )
+    {
+	        
+        struct CLLink* link;
+		
+		// init
+		
+		link = the_string_list.head;
+        
+        while ( link != NULL )
+        {
+
+            CLString* string;
+			string = ( CLString* ) link->data;
+            
+            addStringAsUnique( string , the_object_list );
+            
+            link = link->next;
+            
+        }
+        
+    }
+
+
+	// splits strings into words separated by given character
+
+	CLObjectList* split_string_at_character(	
+        CLString*	the_string ,
+        char		the_character )
+	{
+	
+		struct CLChar*	link;
+		CLString*		word;
+		CLObjectList*	result;
+
+		// init
+
+		result:alloc( );	// needs release
+		result:init( );
+		word:alloc( );		// needs release
+		word:init( );
+	
+		link = the_string.head;
+
+		while ( link != NULL )
+		{
+
+			if ( link->character == the_character )
+			{
+
+				if ( word.length > 0 )
+				{
+				
+					result:add_object( ( CLObject* ) word );
+					word:release( );
+					word:alloc( );
+					word:init( );
+					
+				}
+
+			}
+			else
+			{
+			
+				word:append_character( link->character );
+			
+			}
+
+			link = link->next;
+
+		}
+				
+		if ( word.length > 0 ) result:add_object( ( CLObject* ) word );
+		
+		word:release( );
+	
+		return result;
+	
+	}
+
+}

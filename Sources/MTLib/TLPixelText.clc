@@ -1,0 +1,111 @@
+#include "TLPixelFont.clc"
+#include "CLDataList.clc"
+#include "CLString.clc"
+
+
+TLPixelText:CLObject
+{
+
+	CLDataList* letters;
+	
+	float width;
+	float height;
+
+
+	// constructor
+
+	void init_string ( CLString* the_string )
+	{
+	
+		struct CLChar* link;
+		TLPixelFont* font;
+	
+		// init object component
+
+		CLObject:init( self );
+	
+		width 	= 0;
+		height 	= 0;
+
+		letters:alloc( );		
+		letters.init( );
+		
+		link = the_string.head;
+		
+		while ( link != NULL )
+		{
+		
+			font = TLPixelFont:alloc( );
+			font:init_character( link->character );
+			letters:add_data( font );
+			
+			width  = width + font.width;
+			if ( height < font.height ) height = font.height;
+			
+			link = link->next;
+			
+		}
+	
+	}
+	
+	
+	// constructor
+
+	void init_cstring ( char* the_string )
+	{
+
+		TLPixelFont* font;
+	
+		// init object component
+
+		CLObject:init( self );
+	
+		width 	= 0;
+		height 	= 0;
+
+		letters:alloc( );		
+		letters.init( );
+		
+		while ( *the_string != '\0' )
+		{
+		
+			font = TLPixelFont:alloc( );
+			font:init_character( *the_string );
+			letters:add_data( font );
+			
+			width  = width + font.width;
+			if ( height < font.height ) height = font.height;
+			
+			the_string += 1;
+			
+		}
+	
+	}
+	
+	
+	// destructor
+	
+	void destruct( )
+	{
+
+		struct CLLink* link;
+		TLPixelFont* font;
+		
+		link = letters.head;
+		
+		while ( link != NULL )
+		{
+		
+			font = link->data;
+			font.release( );
+			link = link->next;
+			
+		}
+			
+		letters.release( );
+
+		CLObject:destruct( self );
+	
+	}
+
+}

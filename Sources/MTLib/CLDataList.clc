@@ -1,0 +1,398 @@
+//
+//  a linkedlist containing void* data
+//
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include "CLLink.h"
+#include "CLObject.clc"
+
+
+CLDataList:CLObject
+{
+
+	struct CLLink* 	head;		// pointer to first link
+	struct CLLink* 	last;		// pointer to last link
+	unsigned long	length;		// element count of list
+	
+	
+	// initializator
+
+	void init( )
+    {
+
+		CLObject:init( self );
+
+		head 	= NULL;
+		last 	= NULL;
+		length	= 0;
+    
+    }
+
+	
+	// destructor
+
+	void destruct( )
+	{
+	
+		remove_all_data( );
+
+		CLObject:destruct( self );
+	
+	}
+
+	
+	// appends data to DataList
+	
+	void add_data( void* the_data )
+	{
+
+		struct CLLink* new_link;
+
+		// create link
+				
+		new_link = malloc( sizeof( struct CLLink ) );
+
+		new_link->data = the_data;
+		new_link->next = NULL;
+
+		if ( head == NULL ) head = new_link;
+		else last->next = new_link;
+
+		last	= new_link;
+		length	= length + 1;
+		
+	}
+	
+	
+	// adds data at given index
+	
+	void add_data_at_index( void*		 the_data ,
+                           unsigned long the_index )
+	{
+
+		struct CLLink*	link;
+		struct CLLink*  new_link;
+		struct CLLink*	last_link;
+		unsigned long	position;
+		
+		// init
+		
+		link = head;
+		last_link = NULL;
+		position = 0;
+
+		while ( link != NULL )
+		{
+
+			if ( position == the_index )
+			{
+
+				new_link = malloc( sizeof( struct CLLink ) );
+				new_link->data = the_data;
+				new_link->next = link;
+				
+				if ( last_link != NULL ) last_link->next = new_link;
+				else head = new_link;
+				length = length + 1;
+				
+				return;
+			
+			}
+
+			position += 1;
+			last_link = link;
+			link = link->next;
+
+		}
+	
+	}
+
+
+	// appends array to DataList
+
+	void add_data_list( CLDataList* the_data_list )
+	{
+
+		struct CLLink* link;
+
+		if ( the_data_list.length > 0 )
+		{
+
+			link = the_data_list.head;
+
+			while ( link != NULL )
+			{
+
+				add_data( link->data );
+				
+				link = link->next;
+				
+			}
+
+		}
+		
+	}
+	
+
+	// removes data from DataList
+	
+	char remove_data( void* the_data )
+	{
+
+		struct CLLink* link;
+		struct CLLink* prev;
+		
+		// init
+	
+		link = head;
+		prev = NULL;
+		
+		while ( link != NULL )
+		{
+			
+			if ( link->data == the_data )
+			{
+			
+				if 		( link->next == NULL && prev != NULL )
+				{
+					prev->next = NULL;
+					last = prev;
+				}
+				else if ( link->next != NULL && prev == NULL )
+				{
+					head = link->next;
+				}
+				else if ( link->next != NULL && prev != NULL )
+				{
+					prev->next = link->next;
+				}
+				else
+				{
+					head = NULL;
+					last = NULL;
+				}
+								
+				free( link );
+				length -= 1;
+				
+				return 1;
+				
+			}
+			
+			prev = link;
+			link = link->next;
+					
+		}
+        
+        return 0;
+	
+	}
+	
+	
+	// removes data at given index
+	
+	void* remove_data_at_index( unsigned long the_index )
+	{
+	
+		// !!! a more optimized solution is needed
+
+		void* data;
+		
+		// init
+			
+		data = data_at_index( the_index );
+		if ( data != NULL ) remove_data( data );
+		return data;
+	
+	}
+	
+	
+	// empties DataList release
+	
+	void remove_all_data( )
+	{
+
+		struct CLLink* link;
+		struct CLLink* prev;
+		
+		// init
+		
+		link = head;
+		prev = NULL;
+
+		while ( link != NULL ) 
+		{
+		
+			prev = link;
+			link = link->next;
+			
+			free( prev );
+			
+		}
+
+		head 	= NULL;
+		last 	= NULL;
+		length	= 0;
+	
+	}
+		
+
+	// returns data at index
+
+	void* data_at_index( unsigned long the_index )
+	{
+
+		struct CLLink* link;
+		unsigned long position;
+		
+		// init
+
+		link = head;
+		position = 0;
+
+		while ( link != NULL )
+		{
+
+			if ( position == the_index ) return link->data;
+
+			link = link->next;
+			position += 1;
+
+		}
+		
+		return NULL;
+	
+	}
+		
+
+	// returns data at index
+
+	struct CLLink* link_at_index( unsigned long the_index )
+	{
+
+		struct CLLink* link;
+		unsigned long position;
+		
+		// init
+
+		link = head;
+		position = 0;
+
+		while ( link != NULL )
+		{
+
+			if ( position == the_index ) return link;
+
+			link = link->next;
+			position += 1;
+
+		}
+		
+		return NULL;
+	
+	}
+
+
+	// check if object is in the list
+	
+	char contains_data( void* the_data )
+	{
+	
+		struct CLLink* link;
+		
+		// init
+		
+		link = head;
+		
+		while ( link != NULL )
+		{
+					
+			if ( link->data == the_data ) return 1;
+			
+			link = link->next;
+					
+		}
+		
+		return 0;
+	
+	}
+		
+	
+	// returns index of data
+	
+	unsigned long index_of_data( void* the_data )
+	{
+
+		unsigned long index;
+		struct CLLink* link;
+
+		// init
+		
+		index = 0;
+		link = head;
+		
+		while ( link != NULL )
+		{
+		
+			if ( link->data == the_data ) return index;
+
+			index += 1;
+			link = link->next;
+					
+		}
+		
+		return 0;
+	
+	}
+
+
+	// returns first object
+	
+	void* first_data( )
+	{
+	
+		if ( head != NULL ) return head->data;
+		return NULL;
+	
+	}
+	
+	
+	// returns last object
+	
+	void* last_data( )
+	{
+	
+		if ( last != NULL ) return last->data;
+		return NULL;
+	
+	}
+    
+    
+    // clones data list
+    
+    CLDataList* clone( )
+    {
+    
+        CLDataList* result;
+        
+        result:alloc( );
+        result:init( );
+        result:add_data_list( self );
+        
+        return result;
+    
+    }
+		
+
+	// describes instance		
+
+	void describe( )
+	{
+	
+		printf( "\nDataList %i length %lu" , (int)self , length );
+	
+	}
+
+}

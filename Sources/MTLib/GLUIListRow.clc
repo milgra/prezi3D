@@ -1,0 +1,112 @@
+#include "MLVector3.h"
+#include "MLVector4.h"
+#include "MLMatrix4.h"
+#include "GLUIElement.clc"
+#include "GLUIParagraph.clc"
+#include "PNController.clc"
+
+
+
+GLUIListRow:GLUIElement
+{
+
+    char* path;
+    char* sub_text;
+    char* main_text;
+
+    CLObject* delegate;
+    PNController* controller;
+    GLUIParagraph* sub_paragraph;
+    GLUIParagraph* main_paragraph;
+
+
+    // constructor
+    
+    void init_name_frame_image_path_controller(
+        char*       	the_name ,
+        MLVector4       the_frame ,
+        char*           the_path ,
+        PNController*   the_controller  )
+    {
+
+        GLUIElement:init_name_frame( self , the_name , the_frame );
+
+        path = the_path;
+        delegate = NULL;
+        controller = the_controller;
+        
+        main_paragraph:alloc( );
+        main_paragraph:init_name_frame_font_type_align_multiline(
+            "GLUIListRow.main_paragraph" ,
+            MLVector4Create(
+                origo.x + extent.x / 20 ,
+                origo.y - extent.x / 12 ,
+                extent.x - 2 * ( extent.x / 20 ) ,
+                -extent.x / 10 ) ,
+            controller.font_manager.font_for_name_size_r_g_b( "Avenir.ttc" , roundf( extent.x / 20 ) , 0 , 0 , 0 ) ,
+            kGLUIParagraphTypeOutput ,
+            kGLUIParagraphAlignLeft ,
+            1 );
+        main_paragraph:set_color( 0.0 , 0.0 , 0.0 , 0.0 );
+        main_paragraph:set_level( 2 );
+        main_paragraph.delegate = ( CLObject* ) self;
+        
+        sub_paragraph:alloc( );
+        sub_paragraph:init_name_frame_font_type_align_multiline(
+            "GLUIListRow.sub_paragraph" ,
+            MLVector4Create(
+                origo.x + 10 ,
+                origo.y - 10 ,
+                extent.x - 2 * ( extent.x / 15 ) ,
+                -extent.x / 10 ) ,
+            controller.font_manager.font_for_name_size_r_g_b( "Avenir.ttc" , roundf( extent.x / 22 ) , 100 , 100 , 100 ) ,
+            kGLUIParagraphTypeOutput ,
+            kGLUIParagraphAlignLeft ,
+            0 );
+        sub_paragraph:set_color( 0.0 , 0.0 , 0.0 , 0.0 );
+        sub_paragraph:set_level( 2 );
+
+        add_element( ( GLUIElement* ) sub_paragraph );
+        add_element( ( GLUIElement* ) main_paragraph );
+
+    }
+    
+    
+    // destructor
+    
+    void destruct( )
+    {
+
+        sub_textArea:release( );
+        main_textArea:release( );
+
+        GLUIElement:destruct( self );
+
+    }
+    
+    
+    // generic event
+    
+    void event( int the_id , void* the_source , void* the_data )
+    {
+    
+        if ( the_source == main_paragraph )
+        {
+        
+            float new_height = 5 + fabs( (main_paragraph.extent).y) + 5 + fabs((sub_paragraph.extent).y) + 10;
+            
+            if ( new_height > fabs( extent.y ) ) set_extent( MLVector3Create( extent.x , -new_height , 0 ) );
+        
+        }
+    
+    }
+    
+    
+    // shows partial content for speeding up rendering
+    
+    void show_content_between( float the_low_y , float the_top_y )
+    {
+    
+    }
+
+}

@@ -1,0 +1,187 @@
+#include "CLString.clc"
+#include "GLUIElement.clc"
+#include "PRController.clc"
+#include "PRInfoView.clc"
+#include "GLUITrafo.clc"
+#include "GLUIImageArea.clc"
+#include "GLBitmapRGBA.clc"
+#include "GLTextureSquare.clc"
+#include "GLBitmapRGBAUtils.clc"
+#include "GLUIParagraph.clc"
+
+
+PRCodingRoom:PRRoom
+{
+
+
+    void init_name_frame_controller(
+        char* the_name ,
+        MLVector4 the_frame ,
+        PRController* the_controller )
+    {
+    
+        PRRoom:init_name_frame_controller( self , the_name , the_frame , the_controller  );
+    
+        my_info_view:alloc( );
+        my_info_view:init_name_frame_controller(
+            "info_view" ,
+            MLVector4Create( 0 , 0 , 800 , -600 ) ,
+            the_controller );
+        my_info_view:set_color( 0,0,0,0 );
+        my_info_view:set_level( 60 );
+        my_info_view:set_title_label( "Cyberspace of Coding" );
+        my_info_view:show( );
+    
+        add_element( ( GLUIElement* ) my_info_view );
+        
+        info_views:add_data( my_info_view );
+    
+    }
+    
+    
+    void build( )
+    {
+        
+        CLString* wall_path = controller.settings.path_for_file( "grid.png" );
+        char* wall_path_c = wall_path.c_string( );
+        
+        GLBitmapRGBA* bitmap = GLBitmapRGBAUtils:create_bitmap_pngpath( NULL , wall_path_c );
+        GLTextureSquare* wall_texture;
+
+        wall_texture:alloc( );
+        wall_texture:init_width_height( bitmap.width , bitmap.height );
+        wall_texture:clone_bitmap( bitmap );
+        
+        bitmap:release( );
+        wall_path:release( );
+        free( wall_path_c );
+        
+        create_texture_area( wall_texture , 4000 , -600 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , M_PI / 2 , 0 ) ,
+            MLVector3Create( 0 , 0 , 0 ) );
+
+        create_texture_area( wall_texture , 4000 , -600 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , -M_PI / 2 , 0 ) ,
+            MLVector3Create( 800 , 0 , -4000 ) );
+
+        create_texture_area( wall_texture , 4000 , -800 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( -M_PI/2 , -M_PI / 2 , 0 ) ,
+            MLVector3Create( 800 , -600 , -4000 ) );
+
+        create_texture_area( wall_texture , 4000 , -800 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( M_PI/2 , -M_PI / 2 , 0 ) ,
+            MLVector3Create( 0 , 0 , -4000 ) );
+        
+        float alpha = -.8;
+        float radius = 150.0;
+        
+        create_info_view( "enterprise.png" , "enterprise.png" , "1989" , "First Computer" , "I got my first computer in 1989, it was an Enterprise 128, the unique 8 bit computer of the eighties. I started programming IS-BASIC on this machine." ,
+            MLVector3Create( .15 , .15 , .15 ) ,
+            MLVector3Create( -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 ) ,
+            MLVector3Create( 300.0 + sinf( alpha ) * radius , -200.0 + cosf( alpha ) * radius , -200.0 ) );
+        
+        alpha -= .8;
+
+        create_info_view( "pc.png" , "pc.png" , "1991" , "First PC" , "It was a 80286 clone with a monochrome VGA monitor. I picked up QuickBasic here." ,
+            MLVector3Create( .15 , .15 , .15 ) ,
+            MLVector3Create( -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 ) ,
+            MLVector3Create( 300.0 + sinf( alpha ) * radius , -200.0 + cosf( alpha ) * radius , -400.0 ) );
+        
+        alpha -= .8;
+        
+        create_info_view( "javacflash.png" , "javacflash.png" , "1991-2001" , "Programming languages" , "1994 - Pascal in High School \x000d 1998 - C and Java in University \x000d 2001 - Flash actionscript and Javascript" ,
+            MLVector3Create( .15 , .15 , .15 ) ,
+            MLVector3Create( -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 ) ,
+            MLVector3Create( 300.0 + sinf( alpha ) * radius , -200.0 + cosf( alpha ) * radius , -600.0 ) );
+        
+        alpha -= .8;
+        
+        create_info_view( "experiments.png" , "experiments.png" , "2001-2007" , "Graphics, Physics based experiments and prototypes in flash" , "- Inverse Kinematics \x000d - Fluid surface stress simulation \x000d - Particle system animations \x000d - Motion detection from camera input \x000d - Multi-agent ant swarm simulation \x000d - Mass point dynamics simulation" ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 ) ,
+            MLVector3Create( 300.0 + sinf( alpha ) * radius , -200.0 + cosf( alpha ) * radius , -800.0 ) );
+        
+        alpha -= .8;
+        
+        create_info_view( "tetrapod3.png" , "tetrapod3.png" , "2004" , "Tetrapod UI renderer" , "UI renderer written in flash with non-overlapping, pushable windows and window layers" ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 ) ,
+            MLVector3Create( 300.0 + sinf( alpha ) * radius , -200.0 + cosf( alpha ) * radius , -1000.0 ) );
+        
+        alpha -= .8;
+
+        create_info_view( "games.png" , "games.png" , "2001-2007" , "Flash Games" , "- Shooting galleries \x000d - Ant swarm strategy game \x000d - Tetris, Nibbles \x000d - Real physics and inverse kinematics based side scroller" ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 ) ,
+            MLVector3Create( 300.0 + sinf( alpha ) * radius , -200.0 + cosf( alpha ) * radius , -1200.0 ) );
+        
+        alpha -= .8;
+
+        create_info_view( "articles.png" , "articles.png" , "2001-2007" , "Articles, Tutorials" , "Advanced Inverse Kinematics ( 2004, gotoandplay.it ) Projection Plane Based Real 3D ( 2004, gotoandplay.it ) Getting started with ActionScript ( 2007, actionscript.org ) Camera-motion controlled ball ( 2007, actionscript.org ) Getting started with red5 media server ( 2007, actionscript.org ) Streaming and database connection with red5 ( 2007, actionscript.org ) Low level AS3 ( 2007, actionscript,org ) Creating a mandelbrot-set ( 2007, actionscript.org ) Object-Orientation : Creating an ant swarm ( 2007, actionscript.org ) Vector Intersection Calculations ( 2007 , actionscript.org )" ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 ) ,
+            MLVector3Create( 300.0 + sinf( alpha ) * radius , -200.0 + cosf( alpha ) * radius , -1400.0 ) );
+        
+        alpha -= .8;
+
+        create_info_view( "milenia.png" , "milenia.png" , "2007" , "Milenia Grafter Flash Media Server" , "I was among the first ones who reverse engineered Macromedia's RTMP protocol and decided to write a Flash Media Server replacement under 64 Kbytes. The final size of the java binary was 64321 bytes." ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 ) ,
+            MLVector3Create( 300.0 + sinf( alpha ) * radius , -200.0 + cosf( alpha ) * radius , -1600.0 ) );
+        
+        alpha -= .8;
+
+        create_info_view( "termite.png" , "termite.png" , "2009" , "Termite iOS Game" , "My first iOS game, it is the ultimate real-time strategy experience based on my previous multi-agent and ant swarm simulations. It was a huge success among minimal game fans." ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 ) ,
+            MLVector3Create( 300.0 + sinf( alpha ) * radius , -200.0 + cosf( alpha ) * radius , -1800.0 ) );
+        
+        alpha -= .8;
+
+        create_info_view( "kwiknote.png" , "kwiknote.png" , "2011" , "Kwiknote Text Editor for iOS" , "Swipe-controlled text editor with full-size keyboard and an own text renderer" ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 ) ,
+            MLVector3Create( 300.0 + sinf( alpha ) * radius , -200.0 + cosf( alpha ) * radius , -2000.0 ) );
+        
+        alpha -= .8;
+
+        create_info_view( "remotion.png" , "remotion.png" , "2012" , "Remotion Control for iOS/Mac" , "Remotion, the first game remote controller on a mobile phone with 3 degrees of freedom. I spoke about it at SzegedTech, even the regional newspaper wrote an article about it." ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 ) ,
+            MLVector3Create( 300.0 + sinf( alpha ) * radius , -200.0 + cosf( alpha ) * radius , -2200.0 ) );
+        
+        alpha -= .8;
+
+        create_info_view( "gameprog.png" , "gameprog.png" , "2013" , "GameProg for iOS/Mac" , "Tutorials, source code and everything about OpenGL/Inverse Kinematics/Mass Point Dynamics programming." ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 ) ,
+            MLVector3Create( 300.0 + sinf( alpha ) * radius , -200.0 + cosf( alpha ) * radius , -2400.0 ) );
+        
+        alpha -= .8;
+
+        create_info_view( "classc.png" , "classc.png" , "2013" , "Class-C programming language and compiler." , "No more C++, no more Objective-C, just beautiful simple ANSI C with classes and instances without header maintainance. My C coding speed was boosted with a rocket engine." ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 ) ,
+            MLVector3Create( 300.0 + sinf( alpha ) * radius , -200.0 + cosf( alpha ) * radius , -2600.0 ) );
+        
+        alpha -= .8;
+
+        create_info_view( "cortex.png" , "cortex.png" , "2013" , "Cerebral Cortex for iOS/Mac/BB10" , "A minimalistic ambient-reflex game with a twist. Selected for the best new games section by apple." ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 ) ,
+            MLVector3Create( 300.0 + sinf( alpha ) * radius , -200.0 + cosf( alpha ) * radius , -2800.0 ) );
+        
+        alpha -= .8;
+
+        create_info_view( "milan.png" , "milan.png" , "2014" , "Thanks for watching!!!" , "" ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 , -.25 + (float)(rand()%5)/10.0 ) ,
+            MLVector3Create( 300.0 + sinf( alpha ) * radius , -200.0 + cosf( alpha ) * radius , -3000.0 ) );
+
+    }
+    
+}

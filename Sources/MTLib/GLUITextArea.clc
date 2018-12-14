@@ -1,0 +1,376 @@
+#include "CLDataList.clc"
+#include "PLScroller.clc"
+#include "GLUIElement.clc"
+#include "GLUIParagraph.clc"
+
+#define kGLUITextAreaTypeSingleLine 0
+#define kGLUITextAreaTypeMultiLine  1
+
+#define kGLUITextAreaFocusOn 0
+#define kGLUITextAreaFocusOff 1
+#define kGLUITextAreaOpenInsertBar 2
+#define kGLUITextAreaContentSizeChange 3
+
+
+GLUITextArea:GLUIElement
+{
+
+    char type;
+    char pressed;
+
+    float margin;
+    float middle;
+    float equator;
+    
+    MLVector3* touch_start;
+    MLVector3* touch_delta;
+    
+    CLObject* delegate;
+    PLScroller* scroller;
+    GLUIParagraph* content_paragraph;
+
+
+    // constructor
+
+    void init_name_frame_type_margin(
+        char*       the_name ,
+        MLVector4   the_frame ,
+        char        the_type ,
+        float       the_margin )
+    {
+
+        GLUIElement:init_name_frame( self , the_name , the_frame );
+        
+        type = the_type;
+        margin = the_margin;
+        middle = 0;
+        equator = 0;
+        pressed = 0;
+        delegate = NULL;
+        
+        scroller:alloc( );
+        scroller:init( );
+        
+        content_paragraph = NULL;
+        
+        touch_start = NULL;
+        touch_delta = malloc( sizeof( MLVector3 ) );
+
+        if ( type == kGLUITextAreaTypeSingleLine ) scroller.visible_size = extent.x - 2 * margin;
+        else scroller.visible_size = -extent.y - 2 * margin;
+
+    }
+    
+    
+    // destructor
+    
+    void destruct( )
+    {
+    
+        scroller:release( );
+    
+        if ( touch_start != NULL ) free( touch_start );
+        if ( touch_delta != NULL ) free( touch_delta );
+        
+        GLUIElement:destruct( self );
+
+    }
+
+
+    // adds content_paragraph
+    
+    void add_content_paragraph( GLUIParagraph* the_content_paragraph )
+    {
+
+        content_paragraph = the_content_paragraph;
+        content_paragraph.delegate = ( CLObject* ) self;
+        content_paragraph.accepts_mouse = 0;
+
+        if ( type == kGLUITextAreaTypeSingleLine )
+        {
+        
+            equator = ( extent.x - (content_paragraph.extent).x - 2.0 * margin ) / 2.0;
+            if ( equator < 0.0 ) equator = 0.0;
+
+            (content_paragraph.origo).x = roundf( margin + equator );
+            (content_paragraph.origo).y = roundf( ( extent.y - (content_paragraph.extent).y ) / 2.0 );
+            
+            middle = roundf( ( extent.y - (content_paragraph.extent).y ) / 2.0 );
+            scroller.content_size = (content_paragraph.extent).x;
+
+        }
+        else
+        {
+
+            (content_paragraph.origo).x = roundf( ( extent.x - (content_paragraph.extent).x ) / 2.0 );
+            (content_paragraph.origo).y = roundf( -margin );
+        
+            middle = roundf( ( extent.x - (content_paragraph.extent).x ) / 2.0 );
+            scroller.content_size = -(content_paragraph.extent).y;
+        
+        }
+        
+        accepts_focus = content_paragraph.accepts_focus;
+
+        add_element( ( GLUIElement* ) content_paragraph );
+
+        if ( type == kGLUITextAreaTypeSingleLine )
+        {
+        
+            content_paragraph:show_gylphs_between_x1_x2( -scroller.content_head - margin - equator , -scroller.content_head + (extent).x - margin - equator );
+            
+        }
+        else
+        {
+
+            content_paragraph:show_gylphs_between_y1_y2( -scroller.content_head - margin , -scroller.content_head - (extent).y - margin );
+        
+        }
+    
+    }
+    
+    
+    // removes content_paragraph
+    
+    void remove_content_paragraph( )
+    {
+    
+        scroller.content_size = 0;
+    
+        remove_element( ( GLUIElement* ) content_paragraph );
+        
+        content_paragraph = NULL;
+    
+    }
+
+
+    // updates simulation, scroller in this case
+    
+    void update( )
+    {
+    
+        GLUIElement:update( self );
+        
+        if ( content_paragraph != NULL )
+        {
+
+            if ( scroller.active == 1 )
+            {
+            
+                if ( content_paragraph.trafo == NULL )
+                {
+                
+                    MLVector3 new_origo = content_paragraph.origo;
+
+                    if ( type == kGLUITextAreaTypeSingleLine ) new_origo.x = 0.0;
+                    else new_origo.y = 0.0;
+                    
+                    content_paragraph:set_origo( new_origo );
+                
+                }
+
+                needs_redraw = 1;
+            
+                scroller:update( );
+                
+                if ( type == kGLUITextAreaTypeSingleLine )
+                {
+                
+                    content_paragraph:show_gylphs_between_x1_x2( -scroller.content_head - margin - equator , -scroller.content_head + extent.x - margin - equator );
+                    content_paragraph:set_trafo( MLMatrix4CreateTranslation( roundf( margin + equator + scroller.content_head ) , 0 , 0 ) , 0 );
+                    
+                }
+                else
+                {
+                
+                    // content_paragraph:show_gylphs_between_y1_y2( -scroller.content_head - margin , -scroller.content_head - extent.y - margin );
+                    content_paragraph:set_trafo( MLMatrix4CreateTranslation( 0 , roundf( -margin - equator - scroller.content_head ) , 0 ) , 0 );
+                
+                }
+
+            }
+            else if ( content_paragraph.trafo != NULL )
+            {
+            
+                // remove trafo and add back to parent trafo group
+
+                needs_redraw = 1;
+                
+                MLVector3 new_origo = content_paragraph.origo;
+
+                if ( type == kGLUITextAreaTypeSingleLine ) new_origo.x = roundf( margin + equator + scroller.content_head );
+                else new_origo.y = roundf( -margin - equator - scroller.content_head );
+                
+                content_paragraph:set_origo( new_origo );
+                content_paragraph:set_trafo( MLMatrix4CreateIdentity( ) , 1 );
+            
+            }
+            
+        }
+
+    }
+
+
+    // event came from contained content_paragraph
+    
+    void event( int theId , void* the_object )
+    {
+    
+        // printf( "\ncontent_head %f content_size %f (extent).x %f" , scroller.content_head , scroller.content_size , (extent).x );
+
+        if ( type == kGLUITextAreaTypeSingleLine )
+        {
+
+            scroller.content_size = (content_paragraph.extent).x;
+            equator = ( extent.x - (content_paragraph.extent).x - 2.0 * margin ) / 2.0;
+            if ( equator < 0.0 ) equator = 0.0;
+
+            if ( margin + equator + scroller.content_head + scroller.content_size >= extent.x - margin ) scroller.scroll_to_end( );
+            else if ( margin + equator + scroller.content_head + scroller.content_size < extent.x / 2 )
+            {
+            
+                //if ( scroller.content_size < extent.x - margin ) scroller.scroll_to_start( );
+                //else scroller.scroll_to_end( );
+
+            }
+        
+        }
+        else
+        {
+            
+            if ( scroller.content_size != -(content_paragraph.extent).y )
+            {
+            
+                if ( delegate != NULL ) delegate.event( kGLUITextAreaContentSizeChange , self , NULL );
+            
+            }
+
+            scroller.content_size = -(content_paragraph.extent).y;
+            
+            if ( margin + scroller.content_head + scroller.content_size >= -extent.y - margin ) scroller.scroll_to_end( );
+            else if ( margin + scroller.content_head + scroller.content_size < -extent.y / 2 )
+            {
+            
+                //if ( scroller.content_size < -(extent).y - margin ) scroller.scroll_to_start( );
+                //else scroller.scroll_to_end( );
+                
+            }
+        
+        }
+    
+    }
+
+
+    // touch events
+    
+    void touch_began( MLVector3 the_line_a , MLVector3 the_line_b )
+    {
+    
+        MLVector3 touch = get_relative_touch_line_a_line_b( the_line_a , the_line_b );
+    
+        pressed = 1;
+
+        content_paragraph.touch_began( the_line_a , the_line_b );
+
+        touch_delta->x = 0;
+        touch_delta->y = 0;
+        touch_start = malloc( sizeof( MLVector3 ) );
+        *touch_start = touch;
+
+
+    }
+    
+
+    void touch_moved( MLVector3 the_line_a , MLVector3 the_line_b )
+    {
+    
+        MLVector3 touch = get_relative_touch_line_a_line_b( the_line_a , the_line_b );
+
+        pressed = 0;
+    
+        if ( touch_start != NULL && content_paragraph.selection_began_flag == 0 )
+        {
+
+            content_paragraph.touch_ended( the_line_a , the_line_b );
+
+            touch_delta->x = touch.x - touch_start->x;
+            touch_delta->y = touch.y - touch_start->y;
+
+            *touch_start = touch;
+            
+            if ( type == kGLUITextAreaTypeSingleLine ) scroller:scroll_delta_auto( touch_delta->x , 0 );
+            else scroller:scroll_delta_auto( -touch_delta->y , 0 );
+
+        }
+        else
+        {
+
+            content_paragraph.touch_moved( the_line_a , the_line_b );
+
+        }
+
+    }
+    
+    
+    void touch_ended( MLVector3 the_line_a , MLVector3 the_line_b )
+    {
+    
+        if ( delegate != NULL )
+        {
+    
+            if ( content_paragraph.selection_began_flag == 1 ) delegate.event( kGLUITextAreaOpenInsertBar , self , NULL );
+            
+        }
+
+        pressed = 0;
+
+        content_paragraph.touch_ended( the_line_a , the_line_b );
+    
+        if ( touch_start != NULL )
+        {
+
+            if ( type == kGLUITextAreaTypeSingleLine ) scroller:scroll_delta_auto( touch_delta->x , 1 );
+            else scroller:scroll_delta_auto( -touch_delta->y , 1 );
+            
+            free( touch_start );
+            touch_start = NULL;
+            
+        }
+
+    }
+
+
+    // key down event, unicode or backspace
+    
+    void key_down_characters( char* the_characters )
+    {
+    
+        content_paragraph:key_down_characters( the_characters );
+    
+    }
+     
+ 
+    // focus events
+    
+    void focus_on( )
+    {
+
+        if ( content_paragraph.accepts_focus == 1 )
+        {
+        
+            content_paragraph.focus_on( );
+            if ( delegate != NULL ) delegate.event( kGLUITextAreaFocusOn , self , NULL );
+            
+        }
+    
+    }
+    
+    
+    void focus_off( )
+    {
+    
+        if ( content_paragraph.accepts_focus == 1 ) content_paragraph.focus_off( );
+    
+    }
+
+}

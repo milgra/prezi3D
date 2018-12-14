@@ -1,0 +1,112 @@
+#include "MLVector4.h"
+#include "PNController.clc"
+#include "GLUIElement.clc"
+#include "GLUITextArea.clc"
+#include "GLUIImageArea.clc"
+#include "GLUIParagraph.clc"
+
+
+#define kGLUIListSquarePressed 0
+
+GLUIListSquare:GLUIElement
+{
+
+    CLObject* delegate;
+    PNController* controller;
+
+    GLUITextArea* text_area;
+    GLUIImageArea* ui_image;
+    GLUIParagraph* paragraph;
+
+
+    // constructor
+
+    void init_name_frame_image_path_text_controller(
+        char*           the_name ,
+        MLVector4       the_frame ,
+        char*           the_path ,
+        char*           the_text ,
+        PNController*   the_controller )
+    {
+
+        GLUIElement:init_name_frame( self , the_name , the_frame );
+        
+        delegate = NULL;
+        controller = the_controller;
+        accepts_mouse = 1;
+        
+        ui_image:alloc( );
+        ui_image:init_name_frame_path( "GLUIListSquare.ui_image" , MLVector4Create( origo.x , origo.y , extent.x , extent.y ) , the_path );
+        
+        text_area:alloc( );
+        text_area:init_name_frame_type_margin(
+            "PNNickView.info_area" ,
+            MLVector4Create( origo.x , extent.y - extent.y / 5 , extent.x , extent.y / 5 ) ,
+            kGLUITextAreaTypeSingleLine ,
+            10.0 );
+        text_area:set_level( 1 );
+        text_area:set_color( 0.0 , 0.0 , 0.0 , .5 );
+        text_area.delegate = ( CLObject* ) self;
+
+        paragraph:alloc( );
+        paragraph:init_name_frame_font_type_align_multiline(
+            "GLUIListSquare.ui_label" ,
+            MLVector4Create( 0 , 0 , 10.0 , extent.y / 5 ) ,
+            controller.font_manager.font_for_name_size_r_g_b( "Avenir.ttc" , -extent.y / 5 , 255 , 255 , 255 ) ,
+            kGLUIParagraphTypeOutput ,
+            kTLTextMetricsAlignLeft ,
+            0 );
+        paragraph:set_color( 0.0 , 0.0 , 0.0 , 0.0 );
+        paragraph:add_text( the_text );
+
+        add_element( ( GLUIElement* ) ui_image );
+        add_element( ( GLUIElement* ) text_area );
+        
+        text_area:add_content_paragraph( paragraph );
+
+    }
+    
+    
+    // destructor
+    
+    void destruct( )
+    {
+    
+        ui_image:release( );
+        text_area:release( );
+        paragraph:release( );
+    
+        GLUIElement:destruct( self );
+    
+    }
+    
+    
+    // touch event
+
+    void touch_began( MLVector3 the_line_a , MLVector3 the_line_b  )
+    {
+    
+        parent.touch_began( the_line_a , the_line_b );
+        text_area.touch_began( the_line_a , the_line_b );
+        
+    }
+    
+    
+    void touch_moved( MLVector3 the_line_a , MLVector3 the_line_b  )
+    {
+    
+        parent.touch_moved( the_line_a , the_line_b );
+        text_area.touch_moved( the_line_a , the_line_b );
+        
+    }
+    
+    
+    void touch_ended( MLVector3 the_line_a , MLVector3 the_line_b  )
+    {
+    
+        parent.touch_ended( the_line_a , the_line_b );
+        text_area.touch_ended( the_line_a , the_line_b );
+        
+    }
+
+}

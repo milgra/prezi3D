@@ -1,0 +1,128 @@
+#include "CLString.clc"
+#include "GLUIElement.clc"
+#include "PRController.clc"
+#include "PRInfoView.clc"
+#include "GLUITrafo.clc"
+#include "GLUIImageArea.clc"
+#include "GLBitmapRGBA.clc"
+#include "GLTextureSquare.clc"
+#include "GLBitmapRGBAUtils.clc"
+#include "PRRoom.clc"
+
+
+PRMusicRoom:PRRoom
+{
+
+
+    void init_name_frame_controller(
+        char* the_name ,
+        MLVector4 the_frame ,
+        PRController* the_controller )
+    {
+    
+        PRRoom:init_name_frame_controller( self , the_name , the_frame , the_controller  );
+    
+        my_info_view:alloc( );
+        my_info_view:init_name_frame_controller(
+            "info_view" ,
+            MLVector4Create( 0 , 0 , 800 , -600 ) ,
+            the_controller );
+        my_info_view:set_color( 0,0,0,0 );
+        my_info_view:set_level( 60 );
+        my_info_view:set_title_label( "Room of Music" );
+        my_info_view:show( );
+    
+        add_element( ( GLUIElement* ) my_info_view );
+        
+        info_views:add_data( my_info_view );
+    
+    }
+    
+
+    void build( )
+    {
+
+        create_image_area(
+            "wall_music.png" ,
+            600 ,
+            -600 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , M_PI / 2.0 , 0 ) ,
+            MLVector3Create( 0 , 0 , -200 )  );
+
+        create_image_area(
+            "wall_music.png" ,
+            800 ,
+            -600 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , 0 , 0 ) ,
+            MLVector3Create( 0 , 0 , -800 )  );
+
+        create_image_area(
+            "floor_music.png" ,
+            800 ,
+            -600 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( -M_PI / 2.0 , 0 , 0 ) ,
+            MLVector3Create( 0 , -600 , -800 )  );
+
+        create_image_area(
+            "guitar.png" ,
+            90 ,
+            -200 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( -0.2 , M_PI / 2.0 , 0 ) ,
+            MLVector3Create( 0 , -400 , -250 )  );
+
+        create_image_area(
+            "bass.png" ,
+            100 ,
+            -250 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( -0.2 , M_PI / 2.0 , 0 ) ,
+            MLVector3Create( 0 , -350 , -500 )  );
+
+
+        create_empty_view(
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , M_PI / 3 , 0.0 ) ,
+            MLVector3Create( 0.0 , 0.0 , -200.0 ) );
+
+        create_info_view( "first.png" , "first.png" , "2000" , "Guitar" , "I started playing the guitar at the age of 20. I learned it from teacher for one year, and I stayed an average campfire musician since :)." ,
+            MLVector3Create( .15 , .15 , .15 ) ,
+            MLVector3Create( 0.0 , M_PI / 2 , 0.0 ) ,
+            MLVector3Create( 0.0 , -350.0 , -330.0 ) );
+
+        create_info_view( "drum.png" , "drum.png" , "2003" , "Drums" , "I learned it for one year, but I always slow down/speed up with the mood of music, I'm a bad drummer :)" ,
+            MLVector3Create( .15 , .15 , .15 ) ,
+            MLVector3Create( 0.0 , M_PI / 2 , 0.0 ) ,
+            MLVector3Create( 0.0 , -250.0 , -400.0 ) );
+
+        create_info_view( "lp.png" , "lp.png" , "2001" , "Bizarreium" , "In 2001 I established my one-man band. First album came in 2001 under the name of Silenzio. It is fully acoustic. I had a demo after this in 2003, called Falling. It seems that I am the only one who enjoys these, but I love them! :)" ,
+            MLVector3Create( .15 , .15 , .15 ) ,
+            MLVector3Create( 0.0 , M_PI / 2 , 0.0 ) ,
+            MLVector3Create( 0.0 , -200.0 , -250.0 ) );
+
+        create_info_view( "pagan.png" , "pagan.png" , "2009" , "Pagan Storm" , "First real band, we played very bad but killer black metal! :) It was disbanded after 1.5 years. I played the bass guitar." ,
+            MLVector3Create( .12 , .12 , .12 ) ,
+            MLVector3Create( 0.0 , M_PI / 2 , 0.0 ) ,
+            MLVector3Create( 0.0 , -50.0 , -320.0 ) );
+
+        create_info_view( "werewolf.png" , "werewolf.png" , "2012" , "My Baby Is A Werewolf" , "I released a single called My Baby is a Werewolf under the band name The MilGra Experiment, it is my second one-man band. It's not so terrible, a lot of people liked it, a strange feeling!!! :)" ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( 0.0 , M_PI / 2 , 0.0 ) ,
+            MLVector3Create( 0.0 , -50.0 , -450.0 ) );
+
+        create_info_view( "qasong.png" , "qasong.png" , "2012" , "QA & SCRUM song" , "QA & SCRUM song by Zsuzsanna Sebestyen, produced and bassed by myself :) It was a huge success in the hungarian IT/Scrum scene." ,
+            MLVector3Create( .16 , .16 , .16 ) ,
+            MLVector3Create( 0.0 , M_PI / 2 , 0.0 ) ,
+            MLVector3Create( 0.0 , -170.0 , -620.0 ) );
+
+        create_info_view( "tomjones.png" , "tomjones.png" , "2013" , "Tom Jones : If he should ever leave you" , "In 2012 I started learning singing at two professional singers, at the end of 2013 I covered and recorded this very very sweet song in a studio. This is my finest performance so far." ,
+            MLVector3Create( .15 , .15 , .15 ) ,
+            MLVector3Create( 0.0 , M_PI / 2 , 0.0 ) ,
+            MLVector3Create( 0.0 , -350.0 , -600.0 ) );
+        
+    }
+
+}

@@ -1,0 +1,615 @@
+//
+// GLUI element base class
+//
+
+
+#include "CLObject.clc"
+#include "CLDataList.clc"
+#include "GLUIModel.clc"
+#include "GLUIModelDrawer.clc"
+
+
+GLUIElement:CLObject
+{
+
+    char* name;
+
+    char needs_redraw;
+    char accepts_mouse;
+    char accepts_focus;
+
+    GLuint group;
+    GLuint level;
+    GLuint texture;            // texture group
+
+    MLVector3 origo;
+    MLVector3 extent;
+    MLVector3 combined_origo;
+
+    MLMatrix4* trafo;
+    MLMatrix4* combined_trafo;
+
+    GLUIModel* model;          // 3D model
+    GLUIModelDrawer* drawer;   // renderer vertex drawer
+    
+    CLDataList* kids;          // kid elements
+    GLUIElement* parent;       // parent element
+
+
+    // constructor
+
+    void init_name_frame( char* the_name , MLVector4 the_frame )
+    {
+
+        // printf( "\nGLUIElement init_name %s" , the_name );
+
+        CLObject:init( self );
+
+        name = the_name;
+
+        needs_redraw = 1;
+        accepts_mouse = 0;
+        accepts_focus = 0;
+
+        group = 0;
+        level = 0;
+        texture = 0;
+
+        origo = MLVector3Create( the_frame.x , the_frame.y , 0.0 );
+        extent = MLVector3Create( the_frame.z , the_frame.w , 0.0 );
+        combined_origo = origo;
+        
+        trafo = NULL;
+        combined_trafo = NULL;
+
+        model = model:alloc( );
+        drawer = NULL;
+
+        kids = kids:alloc( );
+        parent = NULL;
+
+        kids:init( );
+        model:init_name( name );
+        
+        update_frame( );
+        
+    }
+    
+    
+    // destructor
+    
+    void destruct( )
+    {
+
+        // printf( "\nGLUIElement %s destruct" , name );
+    
+        kids:release( );
+        model:release( );
+        frame:release( );
+
+        CLObject:destruct( self );
+
+    }
+
+
+    // sets rendering depth level
+    
+    void set_level( int the_level )
+    {
+    
+        // printf( "\n%s set level %i" , name , the_level );
+
+        level = the_level;
+    
+    }
+    
+    
+    // sets rendering depth level
+    
+    void set_group( int the_group )
+    {
+
+        group = the_group;
+
+    }
+    
+    
+    // sets texture
+    
+    void set_texture( GLuint the_texture )
+    {
+    
+        texture = the_texture;
+    
+    }
+    
+    
+    // sets texture coordinates of model
+    
+    void set_texture_coords( MLVector4 theCoords )
+    {
+    
+        model.set_texture_coord( theCoords.x , theCoords.y , 0 );
+        model.set_texture_coord( theCoords.x , theCoords.w , 1 );
+        model.set_texture_coord( theCoords.z , theCoords.w , 2 );
+        model.set_texture_coord( theCoords.z , theCoords.y , 3 );
+    
+    }
+        
+    
+    // sets color of model
+    
+    void set_color( float the_r , float the_g , float the_b , float theA )
+    {
+
+        // printf( "\nGLUIElement %s set_color %f %f %f %f" , name , the_r , the_g , the_b , theA );
+    
+        model:set_color( the_r , the_g , the_b , theA , 0 );
+        model:set_color( the_r , the_g , the_b , theA , 1 );
+        model:set_color( the_r , the_g , the_b , theA , 2 );
+        model:set_color( the_r , the_g , the_b , theA , 3 );
+
+    }
+
+    
+    // updates origo
+    
+    void set_origo( MLVector3 the_origo )
+    {
+
+        origo = the_origo;
+        
+        update_frame( );
+
+    }
+
+
+    // updates extent
+
+    void set_extent( MLVector3 the_extent )
+    {
+
+        extent = the_extent;
+        
+        update_frame( );
+
+    }
+
+    
+    // adds transformation matrix
+    // two possibilities
+    // -already attached ->
+    // -detached ->
+
+    void set_trafo( MLMatrix4 the_trafo , char the_identity_flag )
+    {
+
+        // printf( "\nGLUIElement %s set_trafo" , name );
+
+        GLUIModelDrawer* one_drawer = drawer;
+
+        if ( the_identity_flag == 0 )
+        {
+
+            if ( trafo == NULL )
+            {
+
+                if ( one_drawer != NULL ) detach( one_drawer );
+            
+                trafo = malloc( sizeof( MLMatrix4 ) );
+                combined_trafo = malloc( sizeof( MLMatrix4 ) );
+
+                if ( one_drawer != NULL ) attach( one_drawer );
+
+            }
+            
+            *trafo = the_trafo;
+            *combined_trafo = the_trafo;
+
+        }
+        else
+        {
+        
+            if ( trafo != NULL )
+            {
+
+                if ( one_drawer != NULL ) detach( one_drawer );
+        
+                free( trafo );
+                free( combined_trafo );
+                
+                trafo = NULL;
+                if ( parent != NULL ) combined_trafo = parent.combined_trafo;
+                
+                if ( one_drawer != NULL ) attach( one_drawer );
+
+            }
+
+        }
+        
+        update_trafo( );
+
+    }
+
+
+
+    // updates simulation recursively
+    
+    void update( )
+    {
+
+        // printf( "\nGLUIElement %s update" , name );
+
+        GLUIElement* one_element;
+        
+        // update kids
+
+        for ( void* data : kids )
+        {
+
+            one_element = data;
+            one_element.update( );
+
+            if ( one_element.needs_redraw == 1 )
+            {
+            
+                one_element.needs_redraw = 0;
+                needs_redraw = 1;
+                
+            }
+            
+        }
+    
+    }
+    
+    
+    // updates frame
+    
+    void update_frame( )
+    {
+
+        GLUIElement* one_element;
+        
+        if ( parent != NULL ) combined_origo = MLVector3Add( parent.combined_origo , origo );
+
+        model:set_position( combined_origo.x , combined_origo.y , 0.0 ,  0 );
+        model:set_position( combined_origo.x , combined_origo.y + extent.y , 0.0 , 1 );
+        model:set_position( combined_origo.x + extent.x , combined_origo.y + extent.y , 0.0 , 2 );
+        model:set_position( combined_origo.x + extent.x , combined_origo.y , 0.0 , 3 );
+
+        // when attached, update recursively
+
+        if ( drawer != NULL )
+        {
+        
+            drawer.models_to_resend.add_data( model );
+        
+            for ( void* data : kids )
+            {
+
+                one_element = data;
+                one_element.update_frame( );
+
+            }
+            
+        }
+    
+    }
+
+
+    // updates trafo recursively
+    
+    void update_trafo( )
+    {
+
+        GLUIElement* one_element;
+        
+        if ( parent != NULL && parent.combined_trafo != NULL )
+        {
+        
+            if ( trafo == NULL ) combined_trafo = parent.combined_trafo;
+            else *combined_trafo = MLMatrix4Multiply( *(parent.combined_trafo) , *trafo );
+        
+        }
+        
+        // if attached, update recursively
+        
+        if ( drawer != NULL )
+        {
+
+            for ( void* data : kids )
+            {
+
+                one_element = data;
+                one_element.update_trafo( );
+
+            }
+
+        }
+    
+    }
+    
+    
+    // returns absolute frame
+    
+    void get_absolute_frame(
+        MLVector3* the_a ,
+        MLVector3* the_b ,
+        MLVector3* the_c ,
+        MLVector3* the_d )
+    {
+    
+        MLVector4 a, b, c, d;
+
+        a = MLVector4Create( combined_origo.x , combined_origo.y , 0.0 , 1 );
+        b = MLVector4Create( combined_origo.x , combined_origo.y + extent.y , 0.0 , 1 );
+        c = MLVector4Create( combined_origo.x + extent.x , combined_origo.y + extent.y , 0.0 , 1 );
+        d = MLVector4Create( combined_origo.x + extent.x , combined_origo.y , 0.0 , 1 );
+        
+        if ( combined_trafo != NULL )
+        {
+
+            a = MLMatrix4MultiplyVector4( *combined_trafo , a );
+            b = MLMatrix4MultiplyVector4( *combined_trafo , b );
+            c = MLMatrix4MultiplyVector4( *combined_trafo , c );
+            d = MLMatrix4MultiplyVector4( *combined_trafo , d );
+            
+        }
+        
+        *the_a = MLVector3Create( a.x , a.y , a.z );
+        *the_b = MLVector3Create( b.x , b.y , b.z );
+        *the_c = MLVector3Create( c.x , c.y , c.z );
+        *the_d = MLVector3Create( d.x , d.y , d.z );
+
+    }
+    
+    
+    // sets relative origo to absolute origo, removes trafo, speeds up rendering
+    
+    void finalize_frame( )
+    {
+    
+        MLVector3 a, b, c, d;
+        
+        get_absolute_frame( &a, &b, &c, &d );
+    
+        model:set_position( a.x , a.y , 0.0 , 0 );
+        model:set_position( b.x , b.y , 0.0 , 1 );
+        model:set_position( c.x , c.y , 0.0 , 2 );
+        model:set_position( d.x , d.y , 0.0 , 3 );
+    
+    }
+
+
+    // adds ui element
+
+    void add_element( GLUIElement* the_element )
+    {
+
+        // printf( "\nGLUIElement %s add_element %s" , name , the_element.name );
+        
+        char exists = kids.contains_data( the_element );
+        
+        if ( exists == 0 )
+        {
+
+            the_element.parent = ( GLUIElement* ) self;
+
+            if ( drawer != NULL ) the_element.attach( drawer );
+
+            kids:add_data( the_element );
+
+            needs_redraw = 1;
+
+        }
+        
+    }
+    
+
+    // removes ui element
+
+    void remove_element( GLUIElement* the_element )
+    {
+
+        // printf( "\nGLUIElement %s remove_element %s" , name , the_element.name );
+        
+        char exists = kids:remove_data( the_element );
+        
+        if ( exists == 1 )
+        {
+
+            if ( drawer != NULL ) the_element.detach( drawer );
+
+            the_element.parent = NULL;
+
+            needs_redraw = 1;
+
+        }
+    
+    }
+    
+
+    // adds element's model to vertex drawer 
+    
+    void attach( GLUIModelDrawer* the_drawer )
+    {
+    
+        // printf( "\nGLUIElement attach %s" , name );
+        
+        // set group and level
+
+        if ( group == 0 ) group = parent.group;
+        level = parent.level + level;
+        
+        // update frame and trafo with parent values
+
+        update_frame( );
+        update_trafo( );
+
+        // add model to drawer
+
+        drawer = the_drawer;
+        drawer:add_model_group_level_texture_trafo( model , group , level , texture , combined_trafo );
+        
+        // attach kid elements
+
+        GLUIElement* one_element;
+
+        for ( void* data : kids )
+        {
+
+            one_element = data;
+            one_element.attach( drawer );
+
+        }
+
+    }
+
+
+    // removes element's model from vertex drawer
+
+    void detach( GLUIModelDrawer* the_drawer )
+    {
+
+        // printf( "\nGLUIElement detach %s drawer %i parent %i" , name , drawer == NULL , parent == NULL );
+        
+        if ( parent == NULL || drawer == NULL ) printf( "\ndetach MALFUNCTION, already detached" );
+        
+        // remove kid elements
+
+        GLUIElement* one_element;
+    
+        for ( void* data : kids )
+        {
+
+            one_element = data;
+            one_element.detach( drawer );
+
+        }
+        
+        // remove model from drawer
+
+        drawer:remove_model_group_level_texture_trafo( model , group , level , texture , combined_trafo );
+        drawer = NULL;
+        
+        // set level
+
+        level -= parent.level;
+        group = 0;
+
+    }
+    
+    
+    // returns relative touch in local 2d coordinate system of square
+    
+    MLVector3 get_relative_touch_line_a_line_b(
+        MLVector3 the_line_a ,
+        MLVector3 the_line_b )
+    {
+
+        MLVector3 plane_a, plane_b, plane_c, plane_d, vector_ab, vector_ad, vector_n, vector_ai, point_is;
+
+        get_absolute_frame( &plane_a, &plane_b, &plane_c, &plane_d );
+
+        // create plane vectors and normal
+
+        vector_ab = MLVector3Sub( plane_b , plane_a );
+        vector_ad = MLVector3Sub( plane_d , plane_a );
+        vector_n  = MLVector3Cross( vector_ab , vector_ad );
+
+        // get intersection point
+
+        point_is = MLVector3IntersectWithPlane( the_line_a , the_line_b , plane_a , vector_n );
+
+        // get angle of AI from AB and AC to build up the frame square in its actual position
+        
+        vector_ai = MLVector3Sub( point_is , plane_a );
+        
+        float angle_ab_ai = MLVector3Angle( vector_ab , vector_ai );
+        float angle_ad_ai = MLVector3Angle( vector_ad , vector_ai );
+        float length_vector_ai = MLVector3Length( vector_ai );
+        
+        // get relative coordinates
+        
+        MLVector3 one_touch;
+        one_touch.x = cos( angle_ad_ai ) * length_vector_ai;
+        one_touch.y = -sin( angle_ad_ai ) * length_vector_ai;
+        one_touch.z = 0.0;
+        
+        // check quarters
+        
+        if ( angle_ab_ai > M_PI / 2 && angle_ad_ai > M_PI / 2 ) one_touch.y *= -1;
+        else if ( angle_ab_ai > M_PI / 2 && angle_ad_ai < M_PI / 2 ) one_touch.y *= -1;
+        
+        return one_touch;
+    
+    }
+
+    
+    // intersection(hit) test
+    
+    void intersect_line_a_line_b_elements(
+        MLVector3 the_line_a ,
+        MLVector3 the_line_b ,
+        CLDataList* elements )
+    {
+    
+        char found;
+        GLUIElement* one_element;
+        
+        found = 0;
+        
+        if ( accepts_mouse == 1 )
+        {
+        
+            MLVector3 one_touch = get_relative_touch_line_a_line_b( the_line_a , the_line_b );
+            
+            // check intervals
+            
+            if ( one_touch.x > 0 &&
+                 one_touch.x <= extent.x &&
+                 one_touch.y < 0 &&
+                 one_touch.y >= extent.y )
+            {
+
+                elements:add_data( ( GLUIElement* ) self );
+                found = 1;
+
+            }
+
+        }
+        else found = 1;
+        
+        // don't search for kid intersections if not intersecting to speed up things
+        
+        if ( found == 1 )
+        {
+
+            for ( void* data : kids )
+            {
+
+                one_element = data;
+                one_element.intersect_line_a_line_b_elements( the_line_a , the_line_b , elements );
+            
+            }
+            
+        }
+
+    }
+
+
+    // events
+
+    void touch_began( MLVector3 the_line_a , MLVector3 the_line_b  ) { }
+    void touch_moved( MLVector3 the_line_a , MLVector3 the_line_b  ) { }
+    void touch_ended( MLVector3 the_line_a , MLVector3 the_line_b  ) { }
+    
+    void key_down_characters( char* the_characters ) { }
+    void key_up_characters( char* the_characters ) { }
+
+    void scroll_x_y( float the_x , float the_y ) { }
+    
+    void focus_on( ) { }
+    void focus_off( ) { }
+
+}

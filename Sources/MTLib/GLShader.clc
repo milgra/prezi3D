@@ -1,0 +1,365 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include "GLErrors.h"
+#include "CLObject.clc"
+
+// Combines 
+// - shader program compiling and linking
+// - uniform and attribute location binding
+// - drawable and vertex buffer object handling with shader's attrib structure
+
+
+GLShader:CLObject
+{
+
+	char*			name;
+	GLuint			program;
+    GLuint			vertex_shader;
+    GLuint			fragment_shader;
+    const char*     vertex_source;
+    const char*     fragment_source;
+
+	GLuint			uniform_counter;
+	GLint*			uniform_locations;
+	const char**	uniform_identifiers;
+
+	GLuint			attribute_counter;
+	GLuint*			attribute_locations;
+	const char** 	attribute_identifiers;
+	
+
+	// constructor
+
+	void init_name ( char* the_name )
+	{
+	
+		// printf( "\nGLShader init %s" , the_name );
+
+		CLObject:init( self );
+	
+		// program related
+
+		uniform_counter			= 0;
+		uniform_locations	 	= malloc( sizeof( GLint ) );
+		uniform_identifiers		= malloc( sizeof( const char* ) );
+		
+		attribute_counter		= 0;
+		attribute_locations 	= malloc( sizeof( GLuint ) );
+		attribute_identifiers 	= malloc( sizeof( const char* ) );
+
+		name					= the_name;
+        program 				= glCreateProgram( );
+        #ifdef DEBUG
+        gl_errors_show( "CreateProgram" );
+        #endif
+
+	}
+
+
+	// destructor
+	
+	void destruct ( )
+	{
+
+		// printf( "\nGLShader destruct %s" , name );
+
+		// delete program
+        
+		if ( program != 0 ) glDeleteProgram( program );
+
+		free( uniform_locations );
+		free( uniform_identifiers );
+		
+		free( attribute_locations );
+		free( attribute_identifiers );
+
+		program = 0;
+
+		CLObject:destruct( self );
+	
+	}
+	
+	
+	// adds vertex shader
+	
+	void add_vertex_shader_source ( const char* the_source )
+	{
+    
+        vertex_source = the_source;
+		
+	}
+	
+	
+	// adds fragment shader
+
+	void add_fragment_shader_source ( const char* the_source )
+	{
+    
+        fragment_source = the_source;
+
+	}
+	
+	
+	// adds attribute location
+	
+	void add_attribute_identifier_location (  const char* the_identifier , GLuint the_location )
+	{
+	
+		attribute_counter 		+= 1;
+		attribute_locations 	= realloc( attribute_locations    , sizeof( GLuint ) * attribute_counter );
+		attribute_identifiers 	= realloc( attribute_identifiers  , sizeof( const char* ) * attribute_counter );
+		
+		attribute_locations[ attribute_counter - 1 ] 	= the_location;
+		attribute_identifiers[ attribute_counter - 1 ] 	= the_identifier;
+
+	}
+
+
+	// adds uniform identifier, after link we can get the location for the id
+	
+	void add_uniform_identifier ( const char* the_identifier )
+	{
+    
+		uniform_counter 	+= 1;
+		uniform_locations 	= realloc( uniform_locations   , sizeof( GLint ) * uniform_counter );
+		uniform_identifiers = realloc( uniform_identifiers , sizeof( const char* ) * uniform_counter );
+		
+		uniform_identifiers[ uniform_counter - 1 ] = the_identifier;
+		
+	}
+    
+    
+    // returns attribute location for identifier
+    
+    GLuint attribute_location_for_identifier( const char* the_identifier )
+    {
+    
+		int index;
+
+		for ( index = 0 ; index < uniform_counter ; index++ )
+		{
+			if ( strcmp( attribute_identifiers[ index ] , the_identifier ) == 0 ) return attribute_locations[ index ];
+		}
+		
+		return 0;
+    
+    }
+	
+	
+	// returns uniform location for identifier
+	
+	GLint uniform_location_for_identifier ( const char* the_identifier )
+	{
+    
+		int index;
+
+		for ( index = 0 ; index < uniform_counter ; index++ )
+		{
+			if ( strcmp( uniform_identifiers[ index ] , the_identifier ) == 0 ) return uniform_locations[ index ];
+		}
+		
+		return 0;
+	
+	}
+	
+	
+	// link program and shaders together
+	
+	void link ( )
+	{
+	
+		int index;
+		char success;
+		
+		success = compile_shader_type_source( &vertex_shader , GL_VERTEX_SHADER , vertex_source );
+
+        if ( success == 1 )
+        {
+
+			glAttachShader( program , vertex_shader );
+            #ifdef DEBUG
+            gl_errors_show( "AttachVertex" );
+            #endif
+
+            success = compile_shader_type_source( &fragment_shader , GL_FRAGMENT_SHADER , fragment_source );
+
+            if ( success == 1 )
+            {
+            
+                glAttachShader( program , fragment_shader );
+                #ifdef DEBUG
+                gl_errors_show( "AttachFragment" );
+                #endif
+                
+            }
+            else printf("\nShader %s : Failed to compile fragment shader" , name );
+            
+            // bind attribute Identifiers. this needs to be done prior to linking.
+            
+            for ( index = 0 ; index < attribute_counter ; index++ )
+            {
+            
+                glBindAttribLocation( 	program ,
+                                        attribute_locations[ index ] , 
+                                        attribute_identifiers[ index ] );	
+
+            }
+            
+            // link program
+            
+            success = link_program( );
+
+            if ( success == 1 )
+            {
+            
+                // get uniform Identifiers
+
+                for ( index = 0 ; index < uniform_counter ; index++ )
+                {
+
+                    uniform_locations[ index ] = glGetUniformLocation( program , uniform_identifiers[ index ] );
+                
+                }
+                
+            }
+            else printf("\nShader %s : Failed to link program: %d" , name , program );
+            
+        }
+        else printf("\nShader %s : Failed to compile vertex shader" , name );
+		
+		// everything is ok, release shaders, program stays
+		
+		if ( vertex_shader > 0 )
+		{
+			glDetachShader( program , vertex_shader );
+			glDeleteShader( vertex_shader );
+		}
+		
+		if ( fragment_shader > 0 )
+		{
+			glDetachShader( program , fragment_shader );
+			glDeleteShader( fragment_shader );
+		}
+
+		vertex_shader = 0;
+		fragment_shader = 0;
+	
+	}
+    
+
+    // compile shader
+	
+	char compile_shader_type_source (
+        GLuint*			the_shader ,
+		GLenum			the_type ,
+		const GLchar*	the_source )
+    {
+
+        GLint status, logLength, realLength;
+		GLchar* log;
+		
+		// create shader
+        
+        status = 0;
+
+        *the_shader = glCreateShader( the_type );
+        #ifdef DEBUG
+        gl_errors_show( "CreateShader" );
+        #endif
+		
+		if ( *the_shader > 0 )
+		{
+
+			// upload source
+			
+			glShaderSource( *the_shader , 1 , &the_source , NULL );
+            #ifdef DEBUG
+            gl_errors_show( "ShaderSource" );
+            #endif
+
+            // compile
+            
+            glCompileShader( *the_shader );
+            #ifdef DEBUG
+            gl_errors_show( "compile_shader_type_source" );
+            #endif
+
+            // get compile log
+            
+            glGetShaderiv( *the_shader , GL_INFO_LOG_LENGTH , &logLength );
+
+            if ( logLength > 0 )
+            {
+                log = ( GLchar* ) malloc( logLength );
+                glGetShaderInfoLog( *the_shader , logLength , &realLength , log );
+                printf("\nShader %s : compile log:\n%s" , name , log );
+                free( log );
+            }
+            
+            // get status
+            
+            glGetShaderiv( *the_shader , GL_COMPILE_STATUS , &status );
+            
+            if ( status == GL_TRUE ) return 1;
+			
+		}
+		else printf( "\nCannot create shader" );
+		
+		return 0;
+        
+    }
+	
+	
+	// link shaders together in gpu
+
+	char link_program ( )
+    {
+
+        GLint status, logLength;
+		GLchar* log;
+		
+		// link program
+
+        glLinkProgram( program );
+        #ifdef DEBUG
+        gl_errors_show( "LinkProgram" );
+        #endif
+		
+		// get linkage log
+        
+        glGetProgramiv( program , GL_INFO_LOG_LENGTH , &logLength );
+
+        if ( logLength > 0 )
+        {
+            log = ( GLchar* ) malloc( logLength );
+            glGetProgramInfoLog( program , logLength , &logLength , log );
+            printf("\nShader %s : Program link log:\n%s" , name , log );
+            free( log );
+        }
+		
+		// get status
+        
+        glGetProgramiv( program , GL_LINK_STATUS , &status );
+        
+        if ( status == GL_TRUE ) return 1;
+        
+        return 0;
+		
+    }
+
+
+	// enables vertex arrays
+	
+	void use ( )
+	{
+		
+		// using program
+	
+		glUseProgram( program );
+        #ifdef DEBUG
+        gl_errors_show( "UseProgram" );
+        #endif
+	
+	}
+		
+}

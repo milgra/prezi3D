@@ -1,0 +1,809 @@
+//
+//  Text Paragraph containing GLUGlyphs
+//
+//  Can be input metrics or output
+//  Can be single line ( horizontal ), or multi line ( vertical )
+//  Increases size automatically
+//  Glyphs can be added or inserted arbitrary
+//  Has own cursor and selection background
+//
+
+
+#include "GLFontTrueType.clc"
+#include "GLUIElement.clc"
+#include "GLUICursor.clc"
+#include "GLUIGlyph.clc"
+#include "TLTextMetrics.clc"
+#include "TLFontMetrics.clc"
+#include "CLDataList.clc"
+#include "microutf8.h"
+
+
+#define kGLUIParagraphTypeOutput    0
+#define kGLUIParagraphTypeInput     1
+
+#define kGLUIParagraphAlignLeft     0
+#define kGLUIParagraphAlignRight    1
+#define kGLUIParagraphAlignCenter   2
+#define kGLUIParagraphAlignJustify  3
+
+
+GLUIParagraph:GLUIElement
+{
+
+    // text related
+
+    char* text;
+    long text_length;
+    
+    char type;
+    char align;
+    char multiline;
+    
+    MLVector3 minimum_extent;
+
+    CLObject* delegate;
+    
+    // ui elements
+
+    CLDataList* glyphs;
+    GLUICursor* cursor;
+    GLUIElement* selection;
+    
+    // objects
+    
+    TLTextMetrics* metrics;
+    GLFontTrueType* font;
+    
+    // helpers
+    
+    long end_index;
+    long start_index;
+
+    char touch_delay;
+    char touch_began_flag;
+    char selection_began_flag;
+    
+    TLFontMetrics* glyph_a;
+    TLFontMetrics* glyph_b;
+
+
+    // constructor
+
+    void init_name_frame_font_type_align_multiline(
+        char* the_name ,
+        MLVector4 the_frame ,
+        GLFontTrueType* the_font ,
+        char the_type ,
+        char the_align ,
+        char the_multiline_flag )
+    {
+
+        // printf( "\nGLUIParagraph init %s font type %i align %i multiline %i" , the_name , the_type , the_align , the_multiline_flag );
+
+        GLUIElement:init_name_frame( self , the_name , the_frame );
+        
+        text = NULL;
+        text_length = 0;
+        
+        type = the_type;
+        align = the_align;
+        multiline = the_multiline_flag;
+        
+        touch_delay = 0;
+        touch_began_flag = 0;
+        selection_began_flag = 0;
+        
+        cursor = NULL;
+        delegate = NULL;
+        selection = NULL;
+
+        end_index = 0;
+        start_index = 0;
+        
+        glyph_a = NULL;
+        glyph_b = NULL;
+
+        font = the_font;
+        font:retain( );
+        glyphs:alloc( );
+        glyphs:init( );
+        metrics:alloc( );
+        metrics:init_type_align_lineheight_width( multiline , the_align , font.font_size , 0 );
+        
+        if ( type == kGLUIParagraphTypeInput ) accepts_focus = 1;
+        
+        minimum_extent = extent;
+        
+        metrics.width = extent.x;
+        
+        if ( type == kGLUIParagraphTypeInput )
+        {
+
+            cursor:alloc( );
+            cursor:init_name_frame( "cursor" , MLVector4Create( 0 , 0 , 2 , -font.font_size ) );
+            cursor:set_color( 0 , 0 , 0 , 1 );
+            cursor.accepts_mouse = 0;
+            
+            selection:alloc( );
+            selection:init_name_frame( "selection" , MLVector4Create( 0 , 0 , 10 , -font.font_size ) );
+            selection:set_color( 0 , 0 , 0 , .3 );
+            selection.accepts_mouse = 0;
+        
+        }
+
+    }
+    
+    
+    // destructor
+    
+    void destruct( )
+    {
+    
+        font:release( );
+        glyphs:release( );
+        metrics:release( );
+
+        GLUIElement:destruct( self );
+
+    }
+ 
+    
+    void focus_on( )
+    {
+    
+        printf( "\nfocus off" );
+        if ( cursor.parent == NULL ) add_element( ( GLUIElement* ) cursor );
+    
+    }
+    
+    
+    void focus_off( )
+    {
+    
+        if ( cursor.parent != NULL ) remove_element( ( GLUIElement* ) cursor );
+    
+    }
+
+
+    // adds text
+    
+    void add_text( char* the_text )
+    {
+    
+        if ( the_text == NULL ) return;
+
+        int codepoint;
+        int utflength;
+        unsigned long codelength;
+        unsigned char* utfbuffer;
+        
+        // store text
+
+        unsigned long new_length = text_length + strlen( the_text );
+        text = realloc( text , new_length );
+        memcpy( text + text_length , the_text , strlen( the_text ) );
+        text_length = new_length;
+        
+        // create utf buffer and get length
+        // !!! ki kene rakni membernek eztet
+        
+        utfbuffer = malloc( sizeof( char ) * 5 );
+        utflength = utf8_strlen(  ( unsigned char* ) the_text );
+        
+        // extract utf characters from character string
+
+        for ( int index = 0 ;
+                  index < utflength ;
+                  index++ )
+        {
+
+            // get character
+        
+            utf8_get_nth_char( ( unsigned char* ) the_text , utfbuffer, 0 , NULL , 0 , 8 );
+
+            // get length
+            
+            codelength = strlen( ( char* ) utfbuffer );
+            
+            // get code point
+            
+            codepoint = utf8_get_codepoint( utfbuffer , codelength );
+            
+            // step to next utf character
+            
+            the_text += codelength;
+
+            // printf( "\ncodepoint %s %i" , utfbuffer , codepoint );
+            
+            add_glyph( codepoint );
+            
+        }
+        
+        free( utfbuffer );
+        
+        // update ourself
+        
+        update_paragraph( );
+        
+    }
+    
+    
+    // removes all text from paragraph
+    
+    void remove_all_text( )
+    {
+    
+        metrics:remove_all_fonts( );
+    
+        GLUIGlyph* one_glyph;
+    
+        for ( void* glyph_data : glyphs )
+        {
+        
+            one_glyph = glyph_data;
+            if ( one_glyph.parent != NULL ) remove_element( ( GLUIElement* ) one_glyph );
+            one_glyph:release( );
+        
+        }
+        
+        glyphs:remove_all_data( );
+        
+        end_index = 0;
+        start_index = 0;
+        
+        glyph_a = NULL;
+        glyph_b = NULL;
+        
+        minimum_extent = extent;
+        
+        metrics.width = extent.x;
+        
+        update_paragraph( );
+    
+    }
+    
+    
+    // adds glyph to metrics and to self
+    
+    void add_glyph( int the_codepoint )
+    {
+
+        float kerning_a;
+        float kerning_b;
+        GLUIGlyph* glglyph;
+        TLFontMetrics* font_metrics;
+
+        GLuint glyph_texture;
+        MLVector4 glyph_frame;
+        MLVector4 glyph_coords;
+
+        kerning_a = 0;
+        kerning_b = 0;
+        
+        // get kerning between codepoint and neighbour codepoints
+        
+        if ( glyph_a != NULL )
+        {
+            font:kerning_for_codeA_codeB( &kerning_a , glyph_a.code , the_codepoint );
+            glyph_a.kerning = kerning_a;
+        }
+        if ( glyph_b != NULL ) font:kerning_for_codeA_codeB( &kerning_b , the_codepoint , glyph_b.code );
+        
+        // get texture, texture coords and frame of letter
+        
+        font:texture_frame_coords_for_codepoint( &glyph_texture , &glyph_frame , &glyph_coords , the_codepoint );
+
+        // create and add font_metrics
+        
+        font_metrics:alloc( );
+        font_metrics:init( );
+        font_metrics.code = the_codepoint;
+        font_metrics.dead = 0;
+        font_metrics.frame = MLVector4Create( 0 , 0 , fabs( glyph_frame.z ) , fabs( glyph_frame.w ) );
+        font_metrics.kerning = kerning_b;
+        
+        // set enter
+        
+        if ( the_codepoint == 13 ) (font_metrics.frame).z = 0.0;
+        
+        // add to metrics
+        
+        if ( start_index == metrics.fonts.length ) metrics:add_font( font_metrics );
+        else metrics:add_font_index( font_metrics , start_index );
+        
+        start_index++;
+
+        // create glglyph
+        
+        char* sbuffer = malloc( sizeof( char ) * 50 );
+        sprintf( sbuffer , "GLUIGlyph %s %lu" , name , glyphs.length );
+        
+        glglyph:alloc( );
+        glglyph:init_name_frame( sbuffer , font_metrics.frame );
+        glglyph.set_texture( glyph_texture );
+        glglyph:set_texture_coords( glyph_coords );
+        
+        glglyph.accepts_mouse = 0;
+        glglyph.codepoint = the_codepoint;
+        glglyph.metrics = font_metrics;
+        glglyph.texcoords = glyph_coords;
+
+        glyphs:add_data( glglyph );
+        
+        glyph_a = font_metrics;
+
+    }
+
+
+    // removes last letter
+    
+    void remove_glyph( )
+    {
+    
+        if ( metrics.fonts.length > 0 )
+        {
+
+            if ( start_index >= metrics.fonts.length )
+            {
+                start_index = metrics.fonts.length;
+                metrics:remove( );
+                glyph_a = metrics.fonts.last_data( );
+            }
+            else
+            {
+                metrics:remove_index( start_index - 1 );
+                glyph_a = metrics.fonts.data_at_index( start_index - 2 );
+            }
+            
+            start_index--;
+            
+            update_paragraph( );
+            
+        }
+    
+    }
+
+    
+    // updates dimensions, lines, glyphs
+    
+    void update_paragraph( )
+    {
+        
+        // update metrics
+
+        metrics:update( );
+        
+        // sync glyphs with metrics
+        
+        GLUIGlyph* glyph;
+        
+        for ( void* data : glyphs )
+        {
+
+            glyph = data;
+            
+            if ( glyph.expanded == 1 )
+            {
+            
+                glyph:set_origo( MLVector3Create( roundf( (glyph.metrics.frame).x ) , roundf( -(glyph.metrics.frame).y ) , 0 ) );
+                glyph:set_extent( MLVector3Create( (glyph.metrics.frame).z , -(glyph.metrics.frame).w , 0 ) );
+                
+            }
+            if ( glyph.parent == NULL && glyph.visible == 1 ) add_element( ( GLUIElement* ) glyph );
+            
+        }
+        
+        // update cursor
+        
+        if ( type == kGLUIParagraphTypeInput )
+        {
+            if ( glyph_a == NULL ) cursor:set_origo( MLVector3Create( 0 , 0 , 0 ) );
+            else cursor:set_origo( MLVector3Create( (glyph_a.frame).x + (glyph_a.frame).z , -(glyph_a.frame).y , 0 ) );
+        }
+        
+        // update dimensions
+        
+        MLVector3 new_extent = extent;
+        
+        if ( metrics.width > minimum_extent.x ) new_extent.x = metrics.width;
+        if ( metrics.height > -minimum_extent.y ) new_extent.y = -metrics.height;
+        
+        if ( extent.x != new_extent.x || extent.y != new_extent.y )
+        {
+            
+            set_extent( new_extent );
+
+            // notify parent about dimension change
+        
+            if ( delegate != NULL ) delegate.event( 0 , self , NULL );
+            
+        }
+        
+        // request needs_redraw
+
+        needs_redraw = 1;
+
+    }
+    
+    
+    // simulation update
+    
+    void update( )
+    {
+    
+        GLUIElement:update( self );
+        
+        if ( touch_began_flag == 1 )
+        {
+        
+            touch_delay += 1;
+            
+            if ( touch_delay == 30 )
+            {
+                
+                touch_delay = 0;
+                touch_began_flag = 0;
+                selection_began_flag = 1;
+            
+                if ( cursor != NULL && cursor.parent != NULL ) remove_element( ( GLUIElement* ) cursor );
+                if ( selection.parent == NULL ) add_element( ( GLUIElement* ) selection );
+
+                end_index = start_index;
+
+                glyph_a = metrics.fonts.data_at_index( start_index );
+                glyph_b = glyph_a;
+                
+                select( );
+                
+            }
+        
+        }
+    
+    }
+    
+    
+    void animate_glyphs( )
+    {
+    
+        GLUIGlyph* glyph;
+        
+        int counter = 0;
+        
+        for ( void* data : glyphs )
+        {
+
+            glyph = data;
+            glyph:animate_to_position( counter++ );
+            
+            counter++;
+            
+        }
+    
+    }
+    
+    
+    // update selection
+    
+    void select( )
+    {
+        
+        long start = start_index;
+        long end = end_index;
+
+        if ( end_index < start_index )
+        {
+            start = end_index;
+            end = start_index;
+        }
+    
+        TLFontMetrics* font_a = metrics.fonts.data_at_index( start );
+        TLFontMetrics* font_b = metrics.fonts.data_at_index( end );
+        
+        if ( font_b != NULL )
+        {
+
+            selection:set_origo( MLVector3Create( (font_a.frame).x , -(font_a.frame).y , 0 ) );
+            selection:set_extent( MLVector3Create( (font_b.frame).x + (font_b.frame).z - (font_a.frame).x , -font.font_size , 0 ) );
+        
+        }
+
+        needs_redraw = 1;
+    
+    }
+    
+    
+    // touch began, on long press, selection mode or paste mode
+
+    void touch_began( MLVector3 the_line_a , MLVector3 the_line_b )
+    {
+    
+        MLVector3 touch = get_relative_touch_line_a_line_b( the_line_a , the_line_b );
+
+        touch_began_flag = 1;
+
+        start_index = metrics:glyph_index_at_x_y( touch.x , fabs( touch.y ) );
+
+        if ( selection_began_flag == 1 )
+        {
+
+            if ( selection.parent != NULL ) remove_element( ( GLUIElement* ) selection );
+            selection_began_flag = 0;
+            needs_redraw = 1;
+        
+        }
+    
+    }
+    
+    
+    // touch move, in case of selection mode move expand selection
+
+    void touch_moved( MLVector3 the_line_a , MLVector3 the_line_b )
+    {
+    
+        MLVector3 touch = get_relative_touch_line_a_line_b( the_line_a , the_line_b );
+    
+        if ( selection_began_flag == 1 )
+        {
+        
+            unsigned long glyphIndex = metrics:glyph_index_at_x_y( touch.x , fabs( touch.y ) );
+
+            glyph_b = metrics.fonts.data_at_index( glyphIndex );
+            
+            end_index = glyphIndex;
+            
+            select( );
+
+        }
+
+    }
+    
+    
+    // touch ended, select character
+    
+    void touch_ended( MLVector3 the_line_a , MLVector3 the_line_b )
+    {
+    
+        MLVector3 touch = get_relative_touch_line_a_line_b( the_line_a , the_line_b );
+    
+        touch_began_flag = 0;
+        touch_delay = 0;
+
+        if ( selection_began_flag == 0 )
+        {
+        
+            if ( type == kGLUIParagraphTypeInput && metrics.fonts.length > 0 )
+            {
+            
+                unsigned long glyphIndex = metrics:glyph_index_at_x_y( touch.x , fabs( touch.y ) );
+                
+                TLFontMetrics* font_metrics;
+                
+                if ( glyphIndex >= metrics.fonts.length )
+                {
+                    start_index = glyphIndex;
+                    font_metrics = metrics.fonts.last_data( );
+
+                    cursor:set_origo( MLVector3Create( (font_metrics.frame).x + (font_metrics.frame).z , -(font_metrics.frame).y , 0 ) );
+                
+                    if ( cursor.parent == NULL ) add_element( ( GLUIElement* ) cursor );
+                    
+                }
+                else
+                {
+                    start_index = glyphIndex;
+                    font_metrics = metrics.fonts.data_at_index( glyphIndex );
+                    glyph_a = font_metrics;
+
+                    cursor:set_origo( MLVector3Create( (font_metrics.frame).x - 1 , -(font_metrics.frame).y , 0 ) );
+                
+                    if ( cursor.parent == NULL ) add_element( ( GLUIElement* ) cursor );
+
+                }
+                
+            }
+            
+        }
+    
+    }
+    
+    
+    // key down event, unicode or backspace
+    
+    void key_down_characters( char* the_characters )
+    {
+
+        if ( type == kGLUIParagraphTypeInput )
+        {
+
+            // in case of selection, remove glyphs and letters
+            
+            if ( selection.parent != NULL )
+            {
+            
+                if ( end_index < start_index )
+                {
+                    long tempIndex = start_index;
+                    start_index = end_index;
+                    end_index = tempIndex;
+                }
+
+                // remove metrics
+                
+                if ( end_index >= metrics.fonts.length ) end_index = metrics.fonts.length - 1;
+            
+                for ( int index = 0 ; index < end_index - start_index + 1 ; index++ ) metrics.remove_index( start_index );
+                
+                if ( selection.parent != NULL ) remove_element( ( GLUIElement* ) selection );
+                if ( cursor.parent == NULL ) add_element( ( GLUIElement* ) cursor );
+
+                selection_began_flag = 0;
+                needs_redraw = 1;
+            
+            }
+        
+            if ( strlen( the_characters ) == 1 && the_characters[ 0 ] == 127 ) remove_glyph( );
+            else add_text( the_characters );
+            
+            remove_dead_glyphs( );
+
+        }
+
+    }
+    
+
+    // removes dead glyphs
+    
+    void remove_dead_glyphs( )
+    {
+    
+        CLDataList* dead_list;
+        
+        dead_list:alloc( );
+        dead_list:init( );
+        
+        for ( void* glyph_data : glyphs )
+        {
+        
+            GLUIGlyph* glyph = glyph_data;
+            
+            if ( glyph.metrics.dead == 1 )
+            {
+            
+                remove_element( ( GLUIElement* ) glyph );
+                dead_list:add_data( glyph );
+            
+            }
+
+        }
+
+        for ( void* glyph_data : dead_list )
+        {
+        
+            GLUIGlyph* glyph = glyph_data;
+            glyphs:remove_data( glyph );
+            glyph:release( );
+            
+        }
+        
+        dead_list:release( );
+
+    }
+    
+    
+    // shows or hides hidden elements, in case of a text area parent
+    
+    void show_gylphs_between_x1_x2( float the_x1 , float the_x2 )
+    {
+    
+        // printf( "\nGLUIParagraph showGlyphsBetween %f %f" , the_x1 , the_x2 );
+        
+        if ( cursor != NULL )
+        {
+
+            if ( ( cursor.origo).x > the_x1 && ( cursor.origo).x < the_x2 )
+            {
+                if ( cursor.parent == NULL ) add_element( ( GLUIElement* ) cursor );
+            }
+            else
+            {
+                if ( cursor.parent != NULL ) remove_element( ( GLUIElement* ) cursor );
+            }
+
+        }
+
+        GLUIGlyph* one_glyph;
+        
+        for ( void* glyph_data : glyphs )
+        {
+
+            one_glyph = glyph_data;
+            
+            if ( (one_glyph.metrics.frame).x < the_x1 )
+            {
+            
+                if ( (one_glyph.metrics.frame).x + (one_glyph.metrics.frame).z > the_x1 )
+                {
+
+                    if ( one_glyph.visible == 0 )
+                    {
+                    
+                        add_element( ( GLUIElement* ) one_glyph );
+                        one_glyph.visible = 1;
+                    
+                    }
+
+                    one_glyph:shrink( (one_glyph.metrics.frame).x + ( one_glyph.metrics.frame).z - the_x1 , 0 );
+
+                }
+                else
+                {
+
+                    if ( one_glyph.visible == 1 )
+                    {
+            
+                        remove_element( ( GLUIElement* ) one_glyph );
+                        one_glyph.visible = 0;
+                    
+                    }
+
+                }
+
+            }
+            else if ( (one_glyph.metrics.frame).x + (one_glyph.metrics.frame).z > the_x2 )
+            {
+
+                if ( (one_glyph.metrics.frame).x < the_x2 )
+                {
+
+                    if ( one_glyph.visible == 0 )
+                    {
+
+                        add_element( ( GLUIElement* ) one_glyph );
+                        one_glyph.visible = 1;
+                        
+                    }
+
+                    one_glyph:shrink( the_x2 - (one_glyph.metrics.frame).x , 1 );
+                
+                }
+                else
+                {
+
+                    if ( one_glyph.visible == 1 )
+                    {
+
+                        remove_element( ( GLUIElement* ) one_glyph );
+                        one_glyph.visible = 0;
+                    
+                    }
+                    
+                }
+
+            }
+            else
+            {
+            
+                if ( one_glyph.visible == 0 )
+                {
+
+                    add_element( ( GLUIElement* ) one_glyph );
+                    one_glyph.visible = 1;
+                
+                }
+
+                one_glyph:expand( );
+            
+            }
+        
+        }
+    
+    }
+
+
+    void show_gylphs_between_y1_y2( float the_y1 , float the_y2 )
+    {
+    
+    }
+    
+}

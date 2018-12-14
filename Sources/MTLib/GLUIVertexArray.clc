@@ -1,0 +1,55 @@
+#include "CLObject.clc"
+#include "CLDataList.clc"
+
+
+GLUIVertexArray:CLObject
+{
+
+    GLuint group;           // model group
+    GLuint level;           // depth group
+    GLuint texture;         // texture group
+
+    GLuint vertex_index;
+    GLuint vertex_count;
+
+    MLMatrix4* trafo;       // transformation matrix
+    CLDataList* models;     // models in array
+
+
+    // constructor
+
+    void init( 
+        GLuint the_group , 
+        GLuint the_level , 
+        GLuint the_texture , 
+        MLMatrix4* the_trafo )
+    {
+
+        CLObject:init( self );
+
+        models:alloc( );
+        models:init( );
+        
+        group = the_group;
+        level = the_level;
+        trafo = the_trafo;
+        texture = the_texture;
+
+        vertex_index = 0;
+        vertex_count = 0;
+    
+    }
+    
+    
+    // destructor
+    
+    void destruct( )
+    {
+    
+        models:release( );
+        
+        CLObject:destruct( self );
+    
+    }
+    
+}

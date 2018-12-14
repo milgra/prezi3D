@@ -1,0 +1,89 @@
+// Physics Library Dynamics Mass
+
+#include "PLDXVector.clc"
+#include "CLObject.clc"
+#include "CLDataList.clc"
+
+PLDXMass:CLObject
+{
+		
+	char had_collision;
+
+	float friction;
+	float buoyancy;
+
+	PLDXVector* force;
+	PLDXVector* position;
+	PLDXVector* collision;
+
+	CLDataList* base_walls;
+	CLDataList*	touched_walls;
+	CLDataList*	last_touched_walls;
+	
+	
+	// constructor
+    
+    void init ( )
+    {
+	
+		// printf( "\nMass init %i" , ( long ) self );
+
+		CLObject:init( self );
+
+		force                       = PLDXVector:alloc( );	// needs release
+		position                    = PLDXVector:alloc( );	// needs release
+		collision                   = PLDXVector:alloc( );	// needs release
+
+		base_walls                   = CLDataList:alloc( );	// needs release
+		touched_walls                = CLDataList:alloc( );	// needs release
+		last_touched_walls            = CLDataList:alloc( );	// needs release
+		
+		// setup
+		
+		had_collision = 0;
+
+		friction = .9;
+		buoyancy = .9;
+		
+		force.init_x_y( 0 , 0 );
+		position.init_x_y( 0 , 0 );
+		collision.init_x_y( 0 , 0 );
+		
+		base_walls.init( );
+		touched_walls.init( );
+		last_touched_walls.init( );
+
+    }
+	
+	
+	// destructor
+	
+	void destruct( )
+	{
+
+		// printf( "\nMass destruct %i" , ( long ) self );
+
+		force.release( );
+		position.release( );
+		collision.release( );
+		
+		base_walls.release( );
+		touched_walls.release( );
+		last_touched_walls.release( );
+
+		CLObject:destruct( self );
+
+	}
+	
+	
+	// descriptor
+	
+	void describe ( )
+	{
+	
+		printf( "\nposition " ); position.describe( );
+		printf( " force" ); force.describe( );
+		
+	}
+
+}

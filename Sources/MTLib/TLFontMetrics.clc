@@ -1,0 +1,13 @@
+#include "MLVector4.h"
+#include "CLObject.clc"
+
+
+TLFontMetrics:CLObject
+{
+
+    int code;
+    char dead;
+    float kerning;
+    MLVector4 frame;
+
+}

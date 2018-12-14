@@ -1,0 +1,171 @@
+#include "CLObject.clc"
+#include "PLIKPoint.clc"
+#include "PLIKSpacer.clc"
+
+#define kJointTypeRigid    0
+#define kJointTypeElastic  1
+
+
+PLIKJoint:CLObject
+{
+
+    unsigned char type;
+    float min_angle;
+    float max_angle;
+    PLIKSpacer* spacer_a;
+    PLIKSpacer* spacer_b;
+
+
+    // constructor
+    
+    void init(  unsigned char the_type ,
+                float the_min , 
+                float the_max , 
+                PLIKSpacer* the_spacer_a , 
+                PLIKSpacer* the_spacer_b )
+    {
+
+        CLObject:init( self );
+        
+        type = the_type;
+
+        min_angle = the_min;
+        max_angle = the_max;
+    
+        spacer_a = the_spacer_a;
+        spacer_b = the_spacer_b;
+        
+        spacer_a:retain( );
+        spacer_b:retain( );
+
+    }
+    
+    
+    // destructor
+    
+    void destruct( )
+    {
+    
+        spacer_a:release( );
+        spacer_b:release( );
+    
+        CLObject:destruct( self );
+    
+    }
+
+
+    // respacer method
+
+    void respace_from_point( PLIKPoint* the_point )
+    {
+    
+        // stack variable initialization
+
+        PLIKPoint* peer_a;
+        PLIKPoint* peer_b;
+        PLIKPoint* peer_c;
+        
+        float delta_x;
+        float delta_y;
+        float angle;
+        float angle_ab;
+        float angle_ac;
+        float angle_correction;
+
+        char angle_is_bigger;
+        char angle_is_smaller;
+        char angle_is_closer_to_max;
+        char angle_is_closer_to_min;
+        
+        char need_respacing = 0;
+
+        // get endpoints which are not us
+    
+        peer_a = the_point;
+        peer_b = ( spacer_a.point_a == the_point ) ? ( spacer_a.point_b ) : ( spacer_a.point_a );
+        peer_c = ( spacer_b.point_a == the_point ) ? ( spacer_b.point_b ) : ( spacer_b.point_a );
+        
+        // calculate angle of AB from horizontal
+        
+        delta_x = peer_a.x - peer_b.x;
+        delta_y = peer_a.y - peer_b.y;
+        
+        angle_ab = atan2( delta_y , delta_x );
+
+        // calculate angle of AC from horizontal
+        
+        delta_x = peer_a.x - peer_c.x;
+        delta_y = peer_a.y - peer_c.y;
+        
+        angle_ac = atan2( delta_y , delta_x );
+        
+        // normalize angles to 0..M_PI * 2 interval
+        
+        if ( angle_ab < 0 ) angle_ab += M_PI * 2;
+        if ( angle_ac < 0 ) angle_ac += M_PI * 2;
+        
+        // calculate angle in clockwise direction over AB
+
+        angle = angle_ac > angle_ab ? angle_ac - angle_ab : M_PI * 2 - ( angle_ab - angle_ac );
+
+        // if vectors are close, and AB rotates over AC, and min_angle is 0 for example
+        // correctionAngle would be max_angle, but that's not ok since we should push AC down
+        // so we have to check if AB is closer to min_angle than max_angle
+        
+        angle_is_bigger      = angle > max_angle;
+        angle_is_closer_to_max = angle < max_angle + ( M_PI * 2 - max_angle ) / 2;
+
+        angle_is_smaller     = angle <= min_angle;
+        angle_is_closer_to_min = angle >= max_angle + ( M_PI * 2 - max_angle ) / 2;
+        
+        // calculate correction angle if needed
+        
+        if ( angle_is_bigger == 1 && angle_is_closer_to_max == 1 )
+        {
+        
+            // we have to check peer state to move unreached peer
+            need_respacing  = 1;
+            angle_correction = peer_c.is_reached ? angle_ac - max_angle : angle_ab + max_angle;
+            
+        }
+        else 
+        if ( angle_is_smaller == 1 || angle_is_closer_to_min == 1 )
+        {
+        
+            // we have to check peer state to move unreached peer
+            need_respacing  = 1;
+            angle_correction = peer_c.is_reached ? angle_ac - min_angle : angle_ab + min_angle;
+
+        }
+
+        // respace if needed
+        
+        if ( need_respacing == 1 )
+        {
+        
+            // normalize correction
+
+            if ( angle_correction > M_PI * 2 ) angle_correction -= M_PI * 2;
+            
+            // reposition unreached peer
+            
+            if ( peer_c.is_reached == 1 )
+            {
+        
+                peer_b.x = peer_a.x - cos( angle_correction ) * spacer_a.distance;
+                peer_b.y = peer_a.y - sin( angle_correction ) * spacer_a.distance;
+                
+            }
+            else
+            {
+            
+                peer_c.x = peer_a.x - cos( angle_correction ) * spacer_b.distance;
+                peer_c.y = peer_a.y - sin( angle_correction ) * spacer_b.distance;
+            
+            }
+            
+        }
+
+    }
+    
+}

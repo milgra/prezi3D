@@ -1,0 +1,323 @@
+#include "CLString.clc"
+#include "GLUIElement.clc"
+#include "PRController.clc"
+#include "PRInfoView.clc"
+#include "GLUITrafo.clc"
+#include "CLDataList.clc"
+#include "GLUIImageArea.clc"
+#include "GLBitmapRGBA.clc"
+#include "GLTextureSquare.clc"
+#include "GLBitmapRGBAUtils.clc"
+
+
+PRRoom:GLUIElement
+{
+
+    int counter;
+    int view_index;
+    PRInfoView* my_info_view;
+    CLDataList* info_views;
+    CLDataList* removables;
+    PRController* controller;
+    PRRoom* next_room;
+    PRRoom* last_room;
+
+
+    void init_name_frame_controller(
+        char* the_name ,
+        MLVector4 the_frame ,
+        PRController* the_controller )
+    {
+    
+        GLUIElement:init_name_frame( self , the_name , the_frame );
+        
+        controller = the_controller;
+        
+        info_views:alloc( );
+        info_views:init( );
+        
+        removables:alloc( );
+        removables:init( );
+        
+        view_index = 0;
+        counter = 0;
+
+    }
+    
+    
+    void destruct( )
+    {
+    
+        GLUIElement:destruct( self );
+    
+    }
+    
+    
+    void create_info_view(
+        char* the_image ,
+        char* the_large_image ,
+        char* the_title_label ,
+        char* the_subtitle_label ,
+        char* the_description_label ,
+        MLVector3 the_scale ,
+        MLVector3 the_rotation ,
+        MLVector3 the_translation )
+    {
+    
+        CLString* small_path = controller.settings.path_for_file( the_image );
+        CLString* large_path = controller.settings.path_for_file( the_large_image );
+        char* small_path_c = small_path.c_string( );
+        char* large_path_c = large_path.c_string( );
+        GLUITrafo* local_trafo;
+        PRInfoView* info_view;
+
+        local_trafo:alloc( );
+        local_trafo:init( );
+        local_trafo.scale = the_scale;
+        local_trafo.rotation = the_rotation;
+        local_trafo.translation = the_translation;
+        
+        info_view:alloc( );
+        info_view:init_name_frame_controller(
+            "pic_a_view" ,
+            MLVector4Create( 0 , 0 , 800 , -600 ) ,
+            controller );
+        info_view.small_path = small_path_c;
+        info_view.large_path = large_path_c;
+        info_view:set_color( 0,0,0,0 );
+        info_view:set_level( 30 - ( int ) info_views.length );
+        info_view:set_title_label( the_title_label );
+        info_view:set_subtitle_label( the_subtitle_label );
+        info_view:set_description_label( the_description_label );
+        info_view:set_trafo( local_trafo:matrix( ) , 0 );
+        info_view:set_image( info_view.small_path );
+        
+        add_element( ( GLUIElement* ) info_view );
+        
+        info_views:add_data( info_view );
+        removables:add_data( ( GLUIElement* ) info_view );
+        
+        // cleanup
+        
+        small_path:release( );
+        large_path:release( );
+        local_trafo:release( );
+    
+    }
+
+
+    void create_empty_view(
+        MLVector3 the_scale ,
+        MLVector3 the_rotation ,
+        MLVector3 the_translation )
+    {
+
+        GLUITrafo* local_trafo;
+        PRInfoView* info_view;
+
+        local_trafo:alloc( );
+        local_trafo:init( );
+        local_trafo.scale = the_scale;
+        local_trafo.rotation = the_rotation;
+        local_trafo.translation = the_translation;
+        
+        info_view:alloc( );
+        info_view:init_name_frame_controller(
+            "pic_a_view" ,
+            MLVector4Create( 0 , 0 , 800 , -600 ) ,
+            controller );
+        info_view:set_color( 0,0,0,.5 );
+        info_view:set_trafo( local_trafo:matrix( ) , 0 );
+        info_view.hidden = 1;
+        
+        add_element( ( GLUIElement* ) info_view );
+
+        info_views:add_data( info_view );
+        removables:add_data( ( GLUIElement* ) info_view );
+        
+        local_trafo:release( );
+
+    }
+    
+    
+    void create_texture_area(
+        GLTextureSquare* the_texture ,
+        float the_width ,
+        float the_height ,
+        MLVector3 the_scale ,
+        MLVector3 the_rotation ,
+        MLVector3 the_translation )
+    {
+    
+        GLUIElement* area;
+        GLUITrafo* area_trafo;
+
+        area_trafo:alloc( );
+        area_trafo:init( );
+        area_trafo.scale = the_scale;
+        area_trafo.rotation = the_rotation;
+        area_trafo.translation = the_translation;
+
+        area:alloc( );
+        area:init_name_frame( "GLUIListSquare.ui_image" , MLVector4Create( 0 , 0 , the_width , the_height ) );
+        area:set_trafo( area_trafo:matrix( ) , 0 );
+        area:set_texture( the_texture.id );
+
+        area.model.set_texture_coord( 0 , 0 , 0 );
+        area.model.set_texture_coord( 0 , the_texture.hRatio , 1 );
+        area.model.set_texture_coord( the_texture.wRatio , the_texture.hRatio , 2 );
+        area.model.set_texture_coord( the_texture.wRatio , 0 , 3 );
+        
+        add_element( ( GLUIElement* ) area );
+        
+        area_trafo:release( );
+
+        removables:add_data( ( GLUIElement* ) area );
+
+    }
+
+
+    
+    void create_image_area(
+        char* the_path ,
+        float the_width ,
+        float the_height ,
+        MLVector3 the_scale ,
+        MLVector3 the_rotation ,
+        MLVector3 the_translation )
+    {
+    
+        CLString* image_path = controller.settings.path_for_file( the_path );
+        char* image_path_c = image_path.c_string( );
+        GLUITrafo* image_trafo;
+        GLUIImageArea* image_area;
+
+        image_trafo:alloc( );
+        image_trafo:init( );
+        image_trafo.scale = the_scale;
+        image_trafo.rotation = the_rotation;
+        image_trafo.translation = the_translation;
+
+        image_area:alloc( );
+        image_area:init_name_frame_path( "GLUIListSquare.ui_image" , MLVector4Create( 0 , 0 , the_width , the_height ) , image_path_c );
+        image_area:set_trafo( image_trafo:matrix( ) , 0 );
+        
+        add_element( ( GLUIElement* ) image_area );
+        
+        image_trafo:release( );
+        image_path:release( );
+        free( image_path_c );
+
+        removables:add_data( ( GLUIElement* ) image_area );
+
+    }
+    
+    
+    void update( )
+    {
+    
+        GLUIElement:update( self );
+        
+        if ( counter > 0 ) 
+        {
+            counter -= 1;
+            
+            if ( counter == 1 )
+            {
+            
+                last_room.collapse( );
+                build( );
+
+            }
+
+        }
+    
+    }
+    
+    
+    void step_right( )
+    {
+    
+        if ( counter > 0 ) return;
+
+        PRInfoView* one_view = info_views.data_at_index( view_index );
+        
+        if ( one_view.info_shown == 0 && one_view.hidden == 0 ) one_view.show_with_animation( );
+        else
+        {
+        
+            view_index += 1;
+    
+            if ( view_index == info_views.length ) 
+            {
+
+                view_index = 0;
+                PRInfoView* next_info_view = next_room.info_views.data_at_index( 0 );
+                next_room.counter = 151;
+                controller.actual_room = next_room;
+                controller.ui_controller.zoom_to_element( ( GLUIElement* ) next_info_view , 150 , kGLUIAnimationEaseIn );
+
+            }
+            else
+            {
+            
+                one_view = info_views.data_at_index( view_index );
+                controller.ui_controller.zoom_to_element( ( GLUIElement* ) one_view , 150 , kGLUIAnimationEaseIn );
+                
+            }
+        
+        }
+
+    }
+    
+    
+    void step_left( )
+    {
+
+        PRInfoView* one_view = info_views.data_at_index( view_index );
+        
+        if ( one_view.info_shown == 1 ) one_view.hide( );
+        else
+        {
+        
+            view_index -= 1;
+
+            if ( view_index < 0 ) view_index = 0;
+            else
+            {
+
+                PRInfoView* one_view = info_views.data_at_index( view_index );
+                
+                if ( one_view.info_shown == 1 ) one_view.hide( );
+                    
+                controller.ui_controller.zoom_to_element( ( GLUIElement* ) one_view , 150 , kGLUIAnimationEaseIn );
+                
+            }
+        
+        }
+    
+    }
+    
+    void build( ) {}
+
+    void collapse( ) 
+    {
+    
+        for ( void* kid_data : removables )
+        {
+        
+            GLUIElement* kid = kid_data;
+            remove_element( kid );
+            kid.release( );        
+        
+        }
+        
+        view_index = 0;
+        info_views.remove_all_data( );
+        removables.remove_all_data( );
+        
+        info_views.add_data( my_info_view );
+    
+    }
+
+}

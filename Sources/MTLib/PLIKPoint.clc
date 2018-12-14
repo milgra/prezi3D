@@ -1,0 +1,77 @@
+#include "CLObject.clc"
+#include "CLObjectList.clc"
+#include "PLIKJoint.clc"
+#include "PLIKSpacer.clc"
+
+
+PLIKPoint:CLObject
+{
+
+    float x;
+    float y;
+
+    CLObjectList* joints;
+    CLObjectList* spacers;
+    
+    unsigned char is_fixed;
+    unsigned char is_reached;
+
+
+    void init( float the_x , float the_y )
+    {
+    
+        CLObject:init( self );
+        
+        x = the_x;
+        y = the_y;
+        
+        is_fixed = 0;
+        is_reached = 0;
+
+        joints:alloc( );
+        joints:init( );
+
+        spacers:alloc( );
+        spacers:init( );
+
+    }
+    
+    
+    void destruct( )
+    {
+    
+        joints:release( );
+        spacers:release( );
+    
+        CLObject:destruct( self );
+    
+    }
+
+
+    void update( )
+    {
+    
+        PLIKJoint* joint;
+        PLIKSpacer* spacer;
+
+        is_reached = 1;
+
+        for ( CLObject* joint_object : joints  )
+        {
+        
+            joint = ( PLIKJoint* ) joint_object;
+            joint.respace_from_point( self );
+            
+        }
+
+        for ( PLIKSpacer* spacer_object : spacers )
+        {
+
+            spacer = ( PLIKSpacer* ) spacer_object;
+            spacer.respace_from_point( self );
+
+        }
+            
+    }
+    
+}

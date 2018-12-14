@@ -1,0 +1,496 @@
+
+#include "CLObject.clc"
+#include "CLDataList.clc"
+#include "PLDXMass.clc"
+#include "PLDXSpacer.clc"
+#include "PLDXVector.clc"
+#include "PLDXSegment.clc"
+
+PLDXUniverse:CLObject
+{
+
+	CLDataList*	walls;
+	CLDataList*	masses;
+	CLDataList*	spacers;
+    
+	PLDXVector* gravity;
+	PLDXVector* bounce_mass_normal;
+	PLDXVector* bounce_mass_parallel;
+
+	CLDataList*	colliding_walls_per_step;
+	CLDataList*	colliding_normals_per_step;
+	CLDataList*	colliding_parallels_per_step;
+
+	// initializer
+
+    void init ( )
+    {
+	
+		// printf( "Universe init %li\n" , ( long ) self );
+		
+		CLObject:init( self );
+		
+		// init
+
+		walls = CLDataList:alloc( );	// needs release
+		masses = CLDataList:alloc( );	// needs release
+		spacers = CLDataList:alloc( );	// needs release
+		
+		gravity = PLDXVector:alloc( );	// needs release
+		bounce_mass_normal = PLDXVector:alloc( ); 	// needs release
+		bounce_mass_parallel = PLDXVector:alloc( ); 	// needs release
+		
+		colliding_walls_per_step = CLDataList:alloc( );	// needs release
+		colliding_normals_per_step = CLDataList:alloc( );	// needs release
+		colliding_parallels_per_step = CLDataList:alloc( );	// needs release
+		
+		walls:init( );
+		masses:init( );
+		spacers:init( );
+
+		colliding_walls_per_step.init( );
+		colliding_normals_per_step.init( );
+		colliding_parallels_per_step.init( );
+		
+		gravity:init_x_y( 0 , -.5 );
+		bounce_mass_normal:init_x_y( 0,0);
+		bounce_mass_parallel:init_x_y(0,0 );
+
+    }
+    
+    
+    // destructor
+    
+    void destruct ( )
+    {
+	
+		// printf( "\nUniverse destruct" );
+        
+        reset( );
+    
+		walls.release( );
+		masses.release( );
+		spacers.release( );
+		
+		gravity.release( );
+		bounce_mass_normal.release( );
+		bounce_mass_parallel.release( );
+
+		colliding_walls_per_step.release( );
+		colliding_normals_per_step.release( );
+		colliding_parallels_per_step.release( );
+
+		CLObject:destruct( self );
+    
+    }
+	
+	
+	// reset containers and state
+	
+	void reset( )
+	{
+    
+        PLDXMass* mass;
+        PLDXSpacer* spacer;
+        PLDXSegment* wall;
+
+        for ( void* data : walls )
+        {
+            wall = data;
+            wall:release( );
+        }
+
+        for ( void* data : spacers )
+        {
+            spacer = data;
+            spacer:release( );
+        }
+
+        for ( void* data : masses )
+        {
+            mass = data;
+            mass:release( );
+        }
+
+		walls:remove_all_data( );
+		masses:remove_all_data( );
+		spacers:remove_all_data( );
+		
+		bounce_mass_normal:set_x_y( 0 , 0 );
+		bounce_mass_parallel:set_x_y( 0 , 0 );
+	
+	}
+	
+	
+	// adds mass point
+	
+	void add_mass( PLDXMass* the_mass )
+	{
+	
+		the_mass.retain( );
+		masses:add_data( the_mass );
+	
+	}
+	
+	
+	// removes mass point
+	
+	void remove_mass( PLDXMass* the_mass )
+	{
+	
+		masses:remove_data( the_mass );
+		the_mass.release( );
+	
+	}
+	
+	
+	// adds wall segment
+	
+	void add_wall( PLDXSegment* the_wall )
+	{
+
+		the_wall.retain( );
+		walls:add_data( the_wall );
+	
+	}
+	
+	
+	// removes wall segment
+	
+	void remove_wall( PLDXSegment* the_wall )
+	{
+
+		walls:remove_data( the_wall );
+		the_wall.release( );
+	
+	}
+	
+	
+	// adds wall segment
+	
+	void add_spacer( PLDXSpacer* the_spacer )
+	{
+
+		the_spacer.retain( );
+		spacers:add_data( the_spacer );
+	
+	}
+	
+	
+	// removes wall segment
+	
+	void remove_spacer( PLDXSpacer* the_spacer )
+	{
+
+		spacers:remove_data( the_spacer );
+		the_spacer.release( );
+	
+	}
+    
+    
+    // simulation step
+    
+    void update ( )
+    {
+        
+		float original_length;
+		struct CLLink* link;
+		PLDXMass* mass;
+		PLDXMass* link_mass;
+		PLDXSpacer* spacer;
+		CLDataList* base_walls;
+		PLDXSegment* base_wall_segment;
+    
+        //
+        //  1. Gravity step
+        //
+
+		link = masses.head;
+		
+		while ( link != NULL )
+		{
+			mass = link->data;
+
+			PLDXVector:add_vector( mass.force , gravity );
+			link = link->next;
+			
+		}
+
+        //
+        //  2. Resolver step
+        //
+		
+		link = spacers.head;
+		
+		while ( link != NULL )
+		{
+		
+			spacer = link->data;
+			
+			spacer:respace( );
+			link = link->next;
+		}
+
+        //
+        //  3. Sliding step
+        //
+		
+		link = masses.head;
+		
+		while ( link != NULL )
+		{
+		
+			link_mass	= link->data;
+			base_walls	= link_mass.base_walls;
+            
+            if ( base_walls.length > 0 )
+            {
+            
+                if ( base_walls.length == 1 )
+                {
+                
+                    // TODO if oroginal force directs away from wall, then switch to bouncing mode ( for ex. falling from ceiling )
+            
+                    // slide mass on semgent
+					
+					base_wall_segment = CLDataList:data_at_index( base_walls , 0 );
+					base_wall_segment:slide_mass( link_mass );
+                                        
+                    // decrease force with friction ( sliding is happening )
+					
+					PLDXVector:multiply_value( link_mass.force , link_mass.friction );
+                    
+                    // prepare mass point for bouncing, to exclude touched wall
+					
+					CLDataList:add_data( link_mass.last_touched_walls , base_wall_segment );
+					
+                }
+                else
+                {
+                
+                    // two walls sliding can happen only in a bottom touch situation. stopping particle.
+					
+					PLDXVector:reset( link_mass.force );
+                  
+                }
+
+            }
+			
+			link = link->next;
+
+        }
+
+        
+        //
+        //  4. Bouncing step
+        //
+		
+		link = masses.head;
+
+		while ( link != NULL )
+        {
+		
+			link_mass = link->data;
+
+            // store original length of force, collision detection modifies force
+            
+            original_length = link_mass.force.length;
+            
+            // iteration until no collision is needed
+            // if a masspoint collides with a wall, moving particle to the endpoint of bounced movement vector
+			
+			while ( self:bounceMass( link_mass ) > 0 ) { }
+            
+            // if collision happened
+
+            if ( link_mass.had_collision == 1 )
+            {
+
+				base_walls = link_mass.base_walls;
+            
+                if ( base_walls.length == 0 )
+                {
+
+                    // move mass to calculated endpoint
+					
+					PLDXVector:add_vector( link_mass.position , link_mass.force );
+
+                    // resize force to original force's size
+					
+					if ( link_mass.force.length != 0 ) PLDXVector:multiply_value( link_mass.force , original_length / link_mass.force.length );
+
+                    // decrease force with buoyancy
+					
+					PLDXVector:multiply_value( link_mass.force , link_mass.buoyancy );
+
+                    // if bounce is too small, set mass to sliding mode
+
+                    if ( link_mass.force.length < 1 )
+                    {
+					
+						base_walls:add_data_list( link_mass.touched_walls );                    
+    
+                    }
+                
+                }
+                else
+                {                
+
+                    if ( link_mass.force.length < 1 )
+                    {
+                    
+                        // if collision is smaller, set bouncing wall as the second wall
+						
+						base_walls:add_data_list( link_mass.touched_walls );
+                    
+                    }
+                    else
+                    {
+                    
+                        // if collision bigger than border level, put mass to bouncing mode
+						
+						CLDataList:remove_all_data( base_walls );
+                    
+                    }
+                    
+                }
+                
+            }
+			
+			link = link->next;
+            
+        }        
+
+
+        //
+        //  MOVEMENT STEP
+        //
+        //  if no collision happened to a masspoint, moving it freely
+        //
+		
+		link = masses.head;
+		
+		while ( link != NULL )
+		{
+		
+			link_mass = link->data;
+
+            if ( link_mass.had_collision == 0 ) 
+			{
+				PLDXVector:add_vector( link_mass.position , link_mass.force );
+			}
+			
+			link_mass.had_collision = 0;
+			
+			link = link->next;
+        
+        }
+            
+    }
+
+
+    // check collision with walls
+    
+	char bounce_mass ( PLDXMass* the_mass )
+    {
+
+		struct CLLink* link;
+		struct CLLink* normals_link;
+		struct CLLink* parallels_link;
+		char contains;
+		PLDXSegment* link_wall;
+
+		// printf( "Universe bounceMass %i\n" , ( int ) self );
+	
+        // reset temporary containers
+		
+        colliding_walls_per_step:remove_all_data( );
+        colliding_normals_per_step:remove_all_data( );
+        colliding_parallels_per_step:remove_all_data( );
+        
+        // check collision with all walls besides walls from previous step
+
+		link = walls.head;
+
+		while ( link != NULL )
+		{
+		
+			link_wall = link->data;
+			
+			contains = CLDataList:contains_data( the_mass.last_touched_walls , link_wall );
+			
+			if ( contains == 0 ) PLDXSegment:collide_mass_walls_normals_parallels( link_wall ,
+														the_mass ,
+														colliding_walls_per_step ,
+														colliding_normals_per_step ,
+														colliding_parallels_per_step );
+			
+			link = link->next;
+            
+        }
+				
+        // if mass collides with any wall
+
+        if ( colliding_walls_per_step.length > 0 )
+        {
+        
+            // calculate average of normal and parallel forces
+
+			bounce_mass_normal:set_x_y( 0 , 0 );
+			bounce_mass_parallel:set_x_y( 0 , 0 );
+			
+			normals_link = colliding_normals_per_step.head;
+			
+			while ( normals_link != NULL )
+			{
+				PLDXVector* normalsVector = normals_link->data;
+				PLDXVector:add_vector( bounce_mass_normal , normalsVector );
+				normals_link = normals_link->next;
+			}
+
+			parallels_link = colliding_parallels_per_step.head;
+			
+			while ( parallels_link != NULL )
+			{
+				PLDXVector* parallelsVector = parallels_link->data;
+				PLDXVector:add_vector( bounce_mass_parallel , parallelsVector );
+				parallels_link = parallels_link->next;
+			}
+			
+			// PLDXVector:multiply_value( bounce_mass_normal , 1 / colliding_normals_per_step.length );
+			// PLDXVector:multiply_value( bounce_mass_parallel , 1 / colliding_parallels_per_step.length );
+            
+            // set position to last collision point
+			
+			// PLDXVector:set_vector( the_mass:position , the_mass:collision );
+			
+            // if more walls colliding, only normal vector sum is watched to avoid particle fallout
+            
+            if ( colliding_walls_per_step.length == 1 )
+            {
+            
+				PLDXVector:add_vector( bounce_mass_parallel , bounce_mass_normal );
+                PLDXVector:set_vector( the_mass.force , bounce_mass_parallel );
+            
+            }
+            else 
+			{
+				PLDXVector:set_vector( the_mass.force , bounce_mass_normal );
+			}
+
+            // store touched walls for
+			
+			CLDataList:remove_all_data( the_mass.touched_walls );
+            CLDataList:add_data_list( the_mass.touched_walls , colliding_walls_per_step );
+        
+        }
+        
+        // resetting last touched walls if no collisions happened
+		
+        CLDataList:remove_all_data( the_mass.last_touched_walls );
+        CLDataList:add_data_list( the_mass.last_touched_walls , colliding_walls_per_step );
+
+        return colliding_walls_per_step.length > 0;
+    
+    }	
+}

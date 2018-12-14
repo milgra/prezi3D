@@ -1,0 +1,83 @@
+// Class-C base object class
+//
+// Provides :
+//
+// 1. Default construct/destruct
+// 2. Reference retain/release
+// 3. General event handling
+// 4. General description of object
+
+
+CLObject
+{
+
+	unsigned long retain_count;
+
+
+	// constructor	
+
+	void init ( )
+	{
+
+		retain_count = 1;
+		
+	}
+
+
+	// destructor
+
+	void destruct( )
+	{
+		
+
+		
+	}
+	
+	
+	// retains object
+	
+	void retain ( )
+	{
+
+		retain_count = retain_count + 1;
+
+	}
+	
+	
+	// releases object
+
+	void release ( )
+	{
+
+		retain_count = retain_count - 1;
+		
+		if ( retain_count == 0 )
+		{
+
+			self.destruct( );
+			free_object( self );
+
+		}
+
+	}
+    
+    
+    // generic event handler
+    
+    void event( int the_id , void* the_source , void* the_data )
+    {
+    
+    
+    }
+	
+	
+	// describes object
+	
+	void describe ( )
+	{
+	
+		printf( "\nObject %li retain_count %li" , ( long ) self , retain_count );
+		
+	}
+
+}

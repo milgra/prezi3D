@@ -1,0 +1,152 @@
+#include "CLObject.clc"
+#include "CLDataList.clc"
+#include "GLUITrafoAnimation.clc"
+
+
+#define kGLUITrafoAnimatorFinished 0
+
+
+GLUITrafoAnimator:CLObject
+{
+
+    CLObject* delegate;
+    CLDataList* animations;
+    GLUITrafoAnimation* animation;
+    
+    
+    // construcotr
+    
+    void init( )
+    {
+    
+        CLObject:init( self );
+    
+        animations:alloc( );
+        animations:init( );
+        
+        delegate = NULL;
+        animation = NULL;
+    
+    }
+
+    
+    // destructor
+    
+    void destruct( )
+    {
+    
+        animations:release( );
+
+        CLObject:destruct( self );
+
+    }
+    
+    
+    // adds and starts animation
+    
+    void add_animation( GLUITrafoAnimation* the_animation )
+    {
+    
+        char exists = animations:contains_data( the_animation );
+        
+        if ( exists == 0 )
+        {
+
+            the_animation.retain( );
+
+            animations:add_data( the_animation );
+            
+            start( );
+            
+        }
+
+    }
+
+
+    // adds and starts animation
+    
+    void remove_animation( GLUITrafoAnimation* the_animation )
+    {
+
+        char exists = animations:remove_data( the_animation );
+        
+        if ( exists == 1 )
+        {
+
+            the_animation.release( );
+            
+            start( );
+            
+        }
+
+    }
+    
+    
+    // starts animation
+    
+    void start( )
+    {
+
+        if ( animation == NULL && animations.length > 0 )
+        {
+
+            animation = animations:remove_data_at_index( 0 );
+
+        }
+        else
+        {
+        
+            if ( delegate != NULL ) delegate.event( kGLUITrafoAnimatorFinished , self , NULL );
+        
+        }
+
+    }
+    
+    
+    // resets animator
+    
+    void reset( )
+    {
+    
+        for ( void* animation_data : animations )
+        {
+        
+            GLUITrafoAnimation* one_animation = animation_data;
+            one_animation.release( );
+        
+        }
+
+        animations.remove_all_data( );
+        
+        if ( animation != NULL ) animation:release( );
+        
+        animation = NULL;
+    
+    }
+    
+    
+    // updates animation
+    
+    void update( )
+    {
+
+        if ( animation != NULL )
+        {
+            
+            animation:update( );
+            
+            if ( animation.finished == 1 )
+            {
+                    
+                animation:release( );
+                animation = NULL;
+                
+                start( );
+
+            }
+            
+        }
+
+    }
+
+}

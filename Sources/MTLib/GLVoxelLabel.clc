@@ -1,0 +1,190 @@
+#include "GLCubePC33.clc"
+#include "CLObject.clc"
+#include "GLDrawable.clc"
+#include "CLDataList.clc"
+#include "TLPixelFont.clc"
+
+
+GLVoxelLabel:CLObject
+{
+
+
+	CLDataList* cube_cache;
+	CLDataList* drawables;
+	
+	float x;
+	float y;
+	float z;
+	float size;
+	float width;
+
+
+	// constructor
+
+	void init ( float the_size ,
+				float the_x ,
+				float the_y ,
+				float the_z )
+	{
+
+		// printf( "\nGLVoxelLabel init" );
+
+		CLObject:init( self );
+	
+		drawables:alloc( );
+		drawables:init( );
+
+		cube_cache:alloc( );
+		cube_cache:init( );
+		
+		x = the_x;
+		y = the_y;
+		z = the_z;
+
+		size  = the_size;
+		width = 0;
+	
+	}
+	
+	
+	// destructor
+	
+	void destruct( )
+	{
+	
+		struct CLLink* link;
+		GLCubePC33* one_cube;
+		GLDrawable* one_drawable;
+	
+		// printf( "\nGLVoxelLabel destruct" );
+		
+		// release cubes in drawables
+		
+		link = drawables.head;
+		
+		while ( link != NULL )
+		{
+		
+			one_drawable = link->data;
+			one_drawable.release( );
+			link = link->next;
+		
+		}
+	
+		drawables.release( );
+		
+		// release cubes in cache
+
+		link = cube_cache.head;
+		
+		while ( link != NULL )
+		{
+		
+			one_cube = link->data;
+			one_cube.release( );
+			link = link->next;
+		
+		}
+	
+		cube_cache.release( );
+
+		CLObject:destruct( self );
+
+	}
+	
+	
+	// sets text
+	
+	void set_text( char* the_text )
+	{
+	
+		// putting back cubes in cube_cache
+		
+		int index;
+		float nx, ny;
+		float* data;
+		struct CLLink* link;
+		TLPixelFont* font;
+		GLCubePC33* one_cube;
+		
+		link = drawables.head;
+		
+		while ( link != NULL )
+		{
+			one_cube = ( GLCubePC33* ) link->data;
+			cube_cache:add_data( one_cube );
+			link = link->next;
+		}
+		
+		drawables:remove_all_data( );
+		
+		width = 0;
+		
+		// building up new label	
+
+		while ( *the_text != '\0' )
+		{
+
+			font:alloc( );
+			font:init_character( *the_text );
+			
+			data = font.data;
+
+			for ( index = 0 ;
+				  index < font.length ;
+				  index += 2 )
+			{
+			
+				nx = x + width + data[ index ] * size;
+				ny = y + 6 * size - data[ index + 1 ] * size;
+
+				one_cube = cube_cache:remove_data_at_index( 0 );
+				
+				// create new cube if needed
+				
+				if ( one_cube == NULL )
+				{
+					one_cube:alloc( );
+					one_cube:init( );
+					one_cube:scale( size , size , size );
+				}
+
+				one_cube:origo( nx , ny , z );
+				
+				drawables:add_data( ( GLDrawable* ) one_cube );
+										
+			}
+
+			width = width + font.width * size;
+			
+			font.release( );
+
+			the_text += 1;
+			
+		}
+
+	}
+	
+	
+	// moves label
+	
+	void move( float the_x , float the_y , float the_z )
+	{
+	
+		struct CLLink* link;
+		GLCubePC33* one_cube;
+		
+		link = drawables.head;
+		
+		while ( link != NULL )
+		{
+		
+			one_cube = ( GLCubePC33* ) link->data;
+			one_cube:move( the_x , the_y , the_z );
+			link = link->next;
+		
+		}
+	
+	}
+
+}

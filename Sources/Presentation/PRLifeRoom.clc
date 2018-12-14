@@ -1,0 +1,188 @@
+#include "CLString.clc"
+#include "CLDataList.clc"
+#include "GLUIElement.clc"
+#include "PRController.clc"
+#include "PRInfoView.clc"
+#include "GLUITrafo.clc"
+#include "GLUIImageArea.clc"
+#include "GLBitmapRGBA.clc"
+#include "GLTextureSquare.clc"
+#include "GLBitmapRGBAUtils.clc"
+#include "PRRoom.clc"
+
+
+PRLifeRoom:PRRoom
+{
+
+    GLTextureSquare* table_texture;
+
+
+    void init_name_frame_controller(
+        char* the_name ,
+        MLVector4 the_frame ,
+        PRController* the_controller )
+    {
+    
+        PRRoom:init_name_frame_controller( self , the_name , the_frame , the_controller  );
+    
+        my_info_view:alloc( );
+        my_info_view:init_name_frame_controller(
+            "info_view" ,
+            MLVector4Create( 0 , 0 , 800 , -600 ) ,
+            the_controller );
+        my_info_view:set_color( 0,0,0,0 );
+        my_info_view:set_level( 60 );
+        my_info_view:set_title_label( "Life and Work" );
+        my_info_view:show( );
+    
+        add_element( ( GLUIElement* ) my_info_view );
+        
+        info_views:add_data( my_info_view );
+    
+    }
+
+
+    void build( )
+    {
+
+        create_image_area(
+            "tapeta.png" ,
+            600 ,
+            -600 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , M_PI / 2.0 , 0 ) ,
+            MLVector3Create( 0 , 0 , -200 )  );
+
+        create_image_area(
+            "tapeta.png" ,
+            800 ,
+            -600 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , 0 , 0 ) ,
+            MLVector3Create( 0 , 0 , -800 )  );
+
+        create_image_area(
+            "floor.png" ,
+            800 ,
+            -600 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( -M_PI / 2.0 , 0 , 0 ) ,
+            MLVector3Create( 0 , -600 , -800 )  );
+
+        create_image_area(
+            "offices.png" ,
+            600 ,
+            -300 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , 0 , 0 ) ,
+            MLVector3Create( 100 , -100 , -800 )  );
+
+
+        CLString* table_path = controller.settings.path_for_file( "babybed.png" );
+        char* table_path_c = table_path.c_string( );
+
+        GLBitmapRGBA* table_bitmap = GLBitmapRGBAUtils:create_bitmap_pngpath( NULL , table_path_c );
+
+        table_texture:alloc( );
+        table_texture:init_width_height( table_bitmap.width , table_bitmap.height );
+        table_texture:clone_bitmap( table_bitmap );
+        
+        table_path:release( );
+        table_bitmap:release( );
+        free( table_path_c );
+
+        // bed left
+
+        create_texture_area(
+            table_texture ,
+            200 ,
+            -100 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , M_PI / 2 , 0 ) ,
+            MLVector3Create( 0 , -500 , -300 )  );
+
+        // bed back
+
+        create_texture_area(
+            table_texture ,
+            100 ,
+            -100 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , 0 , 0 ) ,
+            MLVector3Create( 0 , -500 , -500 )  );
+        
+        // bed front
+
+        create_texture_area(
+            table_texture ,
+            100 ,
+            -100 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , 0 , 0 ) ,
+            MLVector3Create( 0 , -500 , -300 )  );
+
+        // bed right
+
+        create_texture_area(
+            table_texture ,
+            200 ,
+            -100 ,
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , M_PI / 2 , 0 ) ,
+            MLVector3Create( 100 , -500 , -300 )  );
+
+        // baby
+
+        create_empty_view(
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , M_PI / 3 , 0.0 ) ,
+            MLVector3Create( 0.0 , 0.0 , -200.0 ) );
+
+        create_info_view( "en.png" , "en.png" , "1979" , "Birth" , "I was born in Budapest in the 11th district. I have a brother ( and one half-brother and three half-sisters )." ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( 0.0 , M_PI/2 , 0.0 ) ,
+            MLVector3Create( 0.0 , -350.0 , -300.0 ) );
+        
+        create_info_view( "growing.png" , "growing.png" , "1979-1994" , "Childhood" , "I spent most of my childhood in Budapest and in the countryside, mainly in Tápiómente and Kóka." ,
+            MLVector3Create( .3 , .3 , .3 ) ,
+            MLVector3Create( 0 , M_PI / 2 , 0.0 ) ,
+            MLVector3Create( 0.0 , -80.0 , -300.0 ) );
+
+        create_info_view( "gimi.png" , "gimi.png" , "1994-1998" , "Balassi Bálint Gimnázium" , "A very nice high school in the 17th district." ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( 0.0 , M_PI / 2 , 0.0 ) ,
+            MLVector3Create( 0.0 , -100.0 , -550.0 ) );
+
+        create_info_view( "bme.png" , "bme.png" , "1998-2001" , "BME" , "Budapest Institute of Technology, information technology. I left the university after three years." ,
+            MLVector3Create( .3 , .3 , .3 ) ,
+            MLVector3Create( 0.0 , M_PI / 2 , 0.0 ) ,
+            MLVector3Create( 0.0 , -350.0 , -550.0 ) );
+
+        create_empty_view(
+            MLVector3Create( 1 , 1 , 1 ) ,
+            MLVector3Create( 0 , 0 , 0.0 ) ,
+            MLVector3Create( 0.0 , 0.0 , -800.0 ) );
+
+        create_info_view( "small.png" , "small.png" , "2001-2005" , "Freelancer and SME period" , "I did flash/web programming and 2D/3D/DTP desig for individuals and small, medium enterprises." ,
+            MLVector3Create( .16 , .16 , .16 ) ,
+            MLVector3Create( 0.0 , 0.0 , 0.0 ) ,
+            MLVector3Create( 150.0 , -300.0 , -800.0 ) );
+
+        create_info_view( "jasmin.png" , "jasmin.png" , "2005-2007" , "livejasmin.com" , "Lead programmer/Architect at livejasmin.com. During these years livejasmin.com became the biggest adult cam-to-cam site in the world, and we took 60-70 percent of Hungary's international bandwidth :)" ,
+            MLVector3Create( .15 , .15 , .15 ) ,
+            MLVector3Create( 0.0 , 0.0 , 0.0 ) ,
+            MLVector3Create( 250.0 , -150.0 , -800.0 ) );
+
+        create_info_view( "maketv.png" , "maketv.png" , "2008" , "Make.TV" , "Lead programmer/Architect at Make.Tv Gmbh in Bonn, Germany. It was a very promising startup - combining the functionality of live video, video on demand services and blogging." ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( 0.0 , 0.0 , 0.0 ) ,
+            MLVector3Create( 400.0 , -280.0 , -800.0 ) );
+
+        create_info_view( "logmein.png" , "logmein.png" , "2010-2013" , "LogMeIn" , "Senior Software Engineer at the R&D department of Szeged. Worked on almost all products of LogMeIn on the web/iOS/OSX side." ,
+            MLVector3Create( .2 , .2 , .2 ) ,
+            MLVector3Create( 0 , 0 , 0.0 ) ,
+            MLVector3Create( 550.0 , -150.0 , -800.0 ) );
+        
+    }
+
+}

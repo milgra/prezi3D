@@ -1,0 +1,364 @@
+#include "CLObject.clc"
+#include "TLFontMetrics.clc"
+#include "CLDataList.clc"
+
+
+#define kTLTextMetricsTypeSingleLine  0
+#define kTLTextMetricsTypeMultiLine   1
+
+#define kTLTextMetricsAlignLeft    0
+#define kTLTextMetricsAlignRight   1
+#define kTLTextMetricsAlignCenter  2
+#define kTLTextMetricsAlignJustify 3
+
+
+TLTextMetrics:CLObject
+{
+
+    char type;
+    char align;
+    
+    float width;
+    float height;
+    float line_height;
+
+    CLDataList* fonts;
+
+
+    // constructor
+
+    void init_type_align_lineheight_width(
+        char the_type ,
+        char the_align ,
+        float the_size ,
+        float the_width )
+    {
+    
+        CLObject:init( self );
+
+        type = the_type;
+        align = the_align;
+        
+        width = the_width;
+        height = the_size;
+        line_height = the_size;
+
+        fonts:alloc( );
+        fonts:init( );
+    
+    }
+
+
+    // destructor
+
+    void destruct( )
+    {
+    
+        fonts:release( );
+
+        CLObject:destruct( self );
+    
+    }
+    
+    
+    // ad glyph at the end
+    
+    void add_font( TLFontMetrics* the_glyph )
+    {
+    
+        fonts:add_data( the_glyph );
+    
+    }
+    
+    
+    // add glyph at arbitrary index
+    
+    void add_font_index( TLFontMetrics* the_glyph , long the_index )
+    {
+    
+        fonts:add_data_at_index( the_glyph , the_index );
+
+    }
+
+
+    // remove glyph
+    
+    void remove( )
+    {
+    
+        remove_index( fonts.length - 1 );
+    
+    }
+
+
+    // remove glyph
+    
+    void remove_index( long the_index )
+    {
+    
+        TLFontMetrics* font = fonts:remove_data_at_index( the_index );
+        font.dead = 1;
+    
+    }
+    
+    
+    void remove_all_fonts( )
+    {
+    
+        fonts:remove_all_data( );
+    
+    }
+    
+    
+    // updates glyph positions
+    
+    void update( )
+    {
+    
+        if ( type == kTLTextMetricsTypeSingleLine ) update_single_line( );
+        else update_multiline( );
+        
+    }
+    
+    
+    // updates glyph positions in a single line paragraph
+    
+    void update_single_line( )
+    {
+
+        TLFontMetrics* glyph;
+        
+        float cursor_x = 0;
+        float cursor_y = 0;
+        
+        // simply put all fonts in one line
+
+        for ( void* glyph_data : fonts )
+        {
+
+            glyph = glyph_data;
+            (glyph.frame).x = cursor_x;
+            (glyph.frame).y = cursor_y;
+            
+            cursor_x += (glyph.frame).z + glyph.kerning;
+        
+        }
+        
+        width = cursor_x;
+        
+    }
+    
+
+    // updates glyph positions in a multi line paragraph
+    
+    void update_multiline( )
+    {
+
+        long spaces = 0;
+        
+        float line_x = 0;
+        float cursor_x = 0;
+        float cursor_y = 0;
+
+        CLDataList* line;
+        CLDataList* word;
+
+        TLFontMetrics* glyph;
+        TLFontMetrics* word_glyph;
+        
+        line:alloc( );
+        line:init( );
+        word:alloc( );
+        word:init( );
+        
+
+        for ( void* glyph_data : fonts )
+        {
+
+            glyph = glyph_data;
+
+            // line break
+            
+            if ( cursor_x + (glyph.frame).z > width )
+            {
+            
+                // if line is one word, add glyph in line list
+            
+                if ( spaces == 0 ) { line:add_data_list( word ); word:remove_all_data( ); }
+                
+                // align
+                
+                if ( align == kTLTextMetricsAlignJustify ) justify_line( &line_x , spaces , cursor_y , line );
+                else if ( align == kTLTextMetricsAlignCenter ) center_line( &line_x , cursor_y , line );
+
+                // reset line
+                
+                cursor_y += line_height;
+                cursor_x = 0;
+                spaces = 0;
+                
+                line:remove_all_data( );
+                
+                for ( void* word_data : word )
+                {
+
+                    // set new position
+                
+                    word_glyph = word_data;
+                    (word_glyph.frame).x = cursor_x;
+                    (word_glyph.frame).y = cursor_y;
+                    
+                    // increase position
+                    
+                    cursor_x += (word_glyph.frame).z + word_glyph.kerning;
+                    
+                }
+
+            }
+            
+            // check for carriage return
+            
+            if ( glyph.code == 13 )
+            {
+
+                if ( align == kTLTextMetricsAlignCenter ) center_line( &cursor_x , cursor_y , line );
+            
+                cursor_y += line_height;
+                cursor_x = 0;
+                spaces = 0;
+                
+                line:remove_all_data( );
+                word:remove_all_data( );
+                
+            }
+            
+            // set metrics
+            
+            (glyph.frame).x = cursor_x;
+            (glyph.frame).y = cursor_y;
+            
+            cursor_x += (glyph.frame).z + glyph.kerning;
+            
+            // store glyph
+            
+            word:add_data( glyph );
+            
+            // check for space
+
+            if ( glyph.code == 32 )
+            {
+            
+                spaces++;
+                
+                // don't count spaces in line width
+                
+                line_x = cursor_x - (glyph.frame).z - glyph.kerning;
+            
+                line:add_data_list( word );
+                word:remove_all_data( );
+                
+            }
+        
+        }
+        
+        line:add_data_list( word );
+
+        if ( align == kTLTextMetricsAlignCenter ) center_line( &cursor_x , cursor_y , line );
+        
+        height = cursor_y + line_height;
+        
+        // cleanup
+        
+        line:release( );
+        word:release( );
+    
+    }
+    
+    
+    void justify_line( float* the_line_x , long the_spaces , float the_cursor_y , CLDataList* the_line )
+    {
+
+        float gap = 0;
+        TLFontMetrics* line_glyph;
+    
+        // calculate space gap width
+        
+        if ( the_spaces > 1 ) gap = ( width - *the_line_x ) / ( float ) ( the_spaces - 1 );
+        
+        // reposition fonts
+
+        *the_line_x = 0;
+
+        for ( void* line_data : the_line )
+        {
+
+            // set new position
+        
+            line_glyph = line_data;
+            (line_glyph.frame).x = *the_line_x;
+            (line_glyph.frame).y = the_cursor_y;
+            
+            // increase position
+            
+            *the_line_x += (line_glyph.frame).z + line_glyph.kerning;
+            
+            // add space gap
+
+            if ( line_glyph.code == 32 ) *the_line_x += gap;
+            
+        }
+    
+    }
+    
+    
+    void center_line( float* the_line_x , float the_cursor_y , CLDataList* the_line )
+    {
+    
+        TLFontMetrics* line_glyph;
+    
+        *the_line_x = ( width - *the_line_x ) / 2;
+
+        for ( void* line_data_a : the_line )
+        {
+
+            // set new position
+        
+            line_glyph = line_data_a;
+            (line_glyph.frame).x = *the_line_x;
+            (line_glyph.frame).y = the_cursor_y;
+            
+            // increase position
+            
+            *the_line_x += (line_glyph.frame).z + line_glyph.kerning;
+
+        }
+    
+    }
+
+
+    // returns glyph index based on coordinate
+    
+    unsigned long glyph_index_at_x_y( float the_x , float the_y )
+    {
+    
+        TLFontMetrics* glyph;
+        unsigned long glyph_index = 0;
+        
+        for ( void* glyph_data : fonts )
+        {
+
+            // set new position
+        
+            glyph = glyph_data;
+            
+            if ( (glyph.frame).x + (glyph.frame).z > the_x && (glyph.frame).y + (glyph.frame).w > the_y ) return glyph_index;
+
+            glyph_index++;
+            
+        }
+    
+        return glyph_index;
+    
+    }
+
+}

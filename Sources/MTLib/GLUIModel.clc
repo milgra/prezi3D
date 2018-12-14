@@ -1,0 +1,150 @@
+#include "CLObject.clc"
+
+//  B(2)(3)    C(5)
+//
+//
+//  A(0)       D(1)(4)
+
+GLUIModel:CLObject
+{
+
+    char* name;
+	GLfloat* data;
+    
+    GLuint data_size;
+    GLuint vertex_count;
+    GLuint vertex_elements;
+    GLuint position_in_buffer;  // data position in vertex buffer buffersubdata
+
+
+    // constructor
+    //  03    5
+    //
+    //  1    24
+    
+    void init_name( char* the_name )
+    {
+
+        CLObject:init( self );
+
+		GLfloat const_data[ ] =
+		{
+
+			0.0f , 0.0f , 0.0f , 0.0f , 0.0f , 1.0f , 1.0f , 0.0f , 0.0f ,
+			0.0f ,-1.0f , 0.0f , 0.0f , 0.0f , 1.0f , 1.0f , 0.0f , 1.0f ,
+			1.0f ,-1.0f , 0.0f , 0.0f , 0.0f , 1.0f , 1.0f , 1.0f , 1.0f ,
+
+			0.0f , 0.0f , 0.0f , 0.0f , 0.0f , 1.0f , 1.0f , 0.0f , 0.0f ,
+			1.0f ,-1.0f , 0.0f , 0.0f , 0.0f , 1.0f , 1.0f , 1.0f , 1.0f ,
+			1.0f , 0.0f , 0.0f , 0.0f , 0.0f , 1.0f , 1.0f , 1.0f , 0.0f
+
+		};
+        
+        vertex_elements = 9;
+        vertex_count = 6;
+        data_size = sizeof( GLfloat ) * vertex_count * vertex_elements;
+        name = the_name;
+        
+		data = malloc( data_size );
+
+		memcpy( data , const_data , data_size );
+
+    }
+    
+    
+    // destructor
+    
+    void destruct( )
+    {
+
+        free( data );
+
+        CLObject:destruct( self );
+
+    }
+
+
+    // sets color values per corner
+    //  03    5
+    //
+    //  1    24
+    
+    void set_color( float the_r , float the_g , float the_b , float the_a , GLuint the_corner )
+    {
+    
+        int index_a = 0;
+        int index_b = 0;
+        
+        if ( the_corner == 0 ) { index_a = 0; index_b = 3; } else
+        if ( the_corner == 1 ) { index_a = 1; index_b = 1; } else
+        if ( the_corner == 2 ) { index_a = 2; index_b = 4; } else
+        if ( the_corner == 3 ) { index_a = 5; index_b = 5; }
+
+        data[ 3 + index_a * 9 ] = the_r;
+        data[ 4 + index_a * 9 ] = the_g;
+        data[ 5 + index_a * 9 ] = the_b;
+        data[ 6 + index_a * 9 ] = the_a;
+
+        data[ 3 + index_b * 9 ] = the_r;
+        data[ 4 + index_b * 9 ] = the_g;
+        data[ 5 + index_b * 9 ] = the_b;
+        data[ 6 + index_b * 9 ] = the_a;
+
+    }
+    
+    
+    // sets texture coord values per corner
+    //  03    5
+    //
+    //  1    24
+    
+    void set_texture_coord( float the_x , float the_y , GLuint the_corner )
+    {
+
+        int index_a = 0;
+        int index_b = 0;
+
+        if ( the_corner == 0 ) { index_a = 0; index_b = 3; } else
+        if ( the_corner == 1 ) { index_a = 1; index_b = 1; } else
+        if ( the_corner == 2 ) { index_a = 2; index_b = 4; } else
+        if ( the_corner == 3 ) { index_a = 5; index_b = 5; }
+
+        data[ 7 + index_a * 9 ] = the_x;
+        data[ 8 + index_a * 9 ] = the_y;
+
+        data[ 7 + index_b * 9 ] = the_x;
+        data[ 8 + index_b * 9 ] = the_y;
+
+    }
+
+    
+    // sets position values per corner
+    //  03    5
+    //
+    //  1    24
+    
+    void set_position( float the_x , float the_y , float the_z , GLuint the_corner )
+    {
+    
+        // printf( "\nGLUIModel set_position %f %f %f %u" , the_x , the_y , the_z , the_corner );
+
+        int index_a = 0;
+        int index_b = 0;
+        
+        if ( the_corner == 0 ) { index_a = 0; index_b = 3; } else
+        if ( the_corner == 1 ) { index_a = 1; index_b = 1; } else
+        if ( the_corner == 2 ) { index_a = 2; index_b = 4; } else
+        if ( the_corner == 3 ) { index_a = 5; index_b = 5; }
+
+        data[ 0 + index_a * 9 ] = the_x;
+        data[ 1 + index_a * 9 ] = the_y;
+        data[ 2 + index_a * 9 ] = the_z;
+
+        data[ 0 + index_b * 9 ] = the_x;
+        data[ 1 + index_b * 9 ] = the_y;
+        data[ 2 + index_b * 9 ] = the_z;
+
+    }
+
+
+}

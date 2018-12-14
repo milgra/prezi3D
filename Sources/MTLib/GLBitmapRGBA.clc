@@ -1,0 +1,357 @@
+//
+//  32 bit RGBA bitmap data container and utility
+//
+
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include "CLObject.clc"
+
+
+GLBitmapRGBA:CLObject
+{
+	
+	int width;
+	int height;
+	int	length;
+
+	unsigned char* data;
+
+
+	// constructor
+
+	void init_width_height( 
+        int theWidth ,
+        int theHeight )
+	{
+
+		CLObject:init( self );
+
+		width 	= theWidth;
+		height 	= theHeight;
+
+		length	= 4 * width * height;
+		data 	= calloc( length , sizeof( unsigned char* ) );
+
+	}
+	
+	
+	// destructor
+	
+	void destruct( )
+	{
+	
+		free( data );
+	
+		CLObject:destruct( self );
+	
+	}
+	
+    
+    // fills up rectangle area in bitmap
+	
+	void fill_sx_sy_ex_ey_r_g_b_a( 
+        int theSX ,
+        int theSY ,
+        int theEX ,
+        int theEY ,
+        float the_r ,
+        float the_g ,
+        float the_b ,
+        float theA )
+	{
+	
+		int x, y, position;
+		unsigned int r, g, b, a;
+		
+		// body
+
+        if ( theEX < theSX ) return;
+        if ( theEY < theSY ) return;
+        if ( theSX < 0 ) theSX = 0;
+        if ( theSY < 0 ) theSY = 0;
+        if ( theEX >= width  ) theEX = width - 1;
+        if ( theEY >= height ) theEY = height - 1;
+
+		r = ( int ) ( the_r * 255.0 );
+		g = ( int ) ( the_g * 255.0 );
+		b = ( int ) ( the_b * 255.0 );
+		a = ( int ) ( theA * 255.0 );
+		
+		for ( y = theSY ; y < theEY ; y++ )
+		{
+		
+			for ( x = theSX ; x < theEX ; x++ )
+			{
+			
+				position = ( y * width + x ) * 4;
+				
+				data[ position ] 	 = r;
+				data[ position + 1 ] = g;
+				data[ position + 2 ] = b;
+				data[ position + 3 ] = a;
+		
+			}
+			
+		}
+
+	}
+    
+    
+    void gradient_sx_sy_ex_ey_r_g_b_a_r_g_b_a( 
+        int theSX ,
+        int theSY ,
+        int theEX ,
+        int theEY ,
+        float theSR ,
+        float theSG ,
+        float theSB ,
+        float theSA ,
+        float theER ,
+        float theEG ,
+        float theEB ,
+        float theEA )
+
+    {
+    
+		int x, y, position;
+        float r,g,b,a,dr,dg,db,da,step;
+		
+		// body
+        
+        if ( theEX < theSX ) return;
+        if ( theEY < theSY ) return;
+        if ( theSX < 0 ) theSX = 0;
+        if ( theSY < 0 ) theSY = 0;
+        if ( theEX >= width  ) theEX = width - 1;
+        if ( theEY >= height ) theEY = height - 1;
+        
+        step = ( float ) ( theEX - theSX );
+
+		dr = ( theER - theSR ) / step;
+		dg = ( theEG - theSG ) / step;
+		db = ( theEB - theSB ) / step;
+		da = ( theEA - theSA ) / step;
+
+		for ( y = theSY ; y < theEY ; y++ )
+		{
+        
+            r = theSR;
+            g = theSG;
+            b = theSB;
+            a = theSA;
+		
+			for ( x = theSX ; x < theEX ; x++ )
+			{
+			
+				position = ( y * width + x ) * 4;
+				
+				data[ position ] 	 = ( int ) ( r * 255.0 );
+				data[ position + 1 ] = ( int ) ( g * 255.0 );
+				data[ position + 2 ] = ( int ) ( b * 255.0 );
+				data[ position + 3 ] = ( int ) ( a * 255.0 );
+        
+                r += dr;
+                g += dg;
+                b += db;
+                a += da;
+		
+			}
+			
+		}
+    
+    }
+	
+
+	void set_x_y_r_g_b_a( int the_x , int the_y , int the_r , int the_g , int the_b , int theA )
+	{
+
+	}
+	
+	
+	void get_x_y_r_g_b_a( int the_x , int the_y , int* the_r , int* the_g , int* the_b , int* theA )
+	{	
+
+	}
+	
+    
+    // adds shadow to non-alpha areas
+	
+	void add_shadow ( )
+	{
+	
+		int x, y, NI, SI, EI, WI, NI2, SI2, EI2, WI2;
+		unsigned char* clone;
+		
+		// body
+		
+		clone = malloc( length );
+		memcpy( clone , data , length );
+
+		for ( y = 0 ; y < height ; y++ )
+		{
+		
+			for ( x = 0 ; x < width ; x++ )
+			{
+
+				int srcIndex = ( y * width + x ) * 4;
+				
+				unsigned int srcA = clone[ srcIndex + 3 ];
+				
+				if ( srcA > 0 )
+				{
+					
+					NI = ( ( y - 1 ) * width + x ) * 4;
+					SI = ( ( y + 1 ) * width + x ) * 4;
+					EI = ( y * width + x - 1 ) * 4;
+					WI = ( y * width + x + 1 ) * 4;
+					
+					if ( NI > 0 && clone[ NI + 3 ] == 0 ) 
+					{
+						data[ NI + 3 ] =  155;
+						NI2 = ( ( y - 2 ) * width + x ) * 4;
+						if ( NI2 > 0 && clone[ NI2 + 3 ] == 0 ) data[ NI2 + 3 ] = 55;
+					}
+
+					if ( SI < length && clone[ SI + 3 ] == 0 )
+					{
+						data[ SI + 3 ] = 155;
+						SI2 = ( ( y + 2 ) * width + x ) * 4;
+						if ( SI2 < length && clone[ SI2 + 3 ] == 0 ) data[ SI2 + 3 ] = 55;					
+					}
+					
+					if ( x - 1 > 0 && clone[ EI + 3 ] == 0 )
+					{
+						data[ EI + 3 ] = 155;
+						EI2 = ( y * width + x - 2 ) * 4;
+						if ( EI2 > 0 && clone[ EI2 + 3 ] == 0 ) data[ EI2 + 3 ] = 55;					
+					}
+					
+					if ( x + 1 < width && clone[ WI + 3 ] == 0 )
+					{
+						data[ WI + 3 ] = 155;
+						WI2 = ( y * width + x + 2 ) * 4;
+						if ( WI2 < length && clone[ WI2 + 3 ] == 0 ) data[ WI2 + 3 ] = 55;										
+					}
+					
+				}
+		
+			}
+			
+		}
+		
+		free( clone );
+
+	}
+    
+    
+    void push_shadow_with_distance( int theDistance )
+    {
+
+        int x, y;
+		unsigned char* clone;
+		
+		// body
+		
+		clone = malloc( length );
+		memcpy( clone , data , length );
+
+		for ( y = 0 ; y < height ; y++ )
+		{
+		
+			for ( x = 0 ; x < width ; x++ )
+			{
+
+                int srcIndex = ( y * width + x ) * 4;
+                
+                unsigned int srcA = clone[ srcIndex + 3 ];
+                
+                if ( srcA > 0 )
+                {
+
+                    data[ srcIndex ] = clone[ srcIndex ];
+                    data[ srcIndex + 1 ] = clone[ srcIndex + 1 ];
+                    data[ srcIndex + 2 ] = clone[ srcIndex + 2 ];
+                    data[ srcIndex + 3 ] = clone[ srcIndex + 3 ];
+            
+                    if ( x + theDistance < width && y + theDistance < height )
+                    {
+                        
+                        int dstIndex = ( ( y + theDistance ) * width + ( x + theDistance ) ) * 4;
+
+                        data[ dstIndex ] = 0;
+                        data[ dstIndex + 1 ] = 0;
+                        data[ dstIndex + 2 ] = 0;
+                        data[ dstIndex + 3 ] = clone[ srcIndex + 3 ];
+                        
+                    }
+                    
+                }
+            
+            }
+            
+        }
+    
+    }
+	
+    
+    // blends another bitmap to bitmap
+	
+	void blend_bitmap_x_y ( GLBitmapRGBA* the_bitmap , int the_x , int the_y )
+	{
+	
+		int x, y, bx, by, srcIndex, dstIndex;
+		float srcR, srcG, srcB, srcA, dstR, dstG, dstB, dstA, outA, outR, outG, outB;
+		unsigned char* srcData;
+		unsigned char* dstData;
+		
+		// body
+
+		bx = the_x + the_bitmap.width;
+		if ( bx > width ) bx = width;
+		by = the_y + the_bitmap.height;
+		if ( by > height ) by = height;
+		
+		srcData = the_bitmap.data;
+		dstData = data;
+		
+		for ( y = the_y ; y < by ; y++ )
+		{
+
+			for ( x = the_x ; x < bx ; x++ )
+			{
+			
+				srcIndex = ( ( y - the_y ) * the_bitmap.width + ( x - the_x ) ) * 4;
+				dstIndex = ( y * width + x ) * 4;
+
+				srcR = ( float ) srcData[ srcIndex     ] / 255.0;
+				srcG = ( float ) srcData[ srcIndex + 1 ] / 255.0;
+				srcB = ( float ) srcData[ srcIndex + 2 ] / 255.0;
+				srcA = ( float ) srcData[ srcIndex + 3 ] / 255.0;
+
+				dstR = ( float ) dstData[ dstIndex     ] / 255.0;
+				dstG = ( float ) dstData[ dstIndex + 1 ] / 255.0;
+				dstB = ( float ) dstData[ dstIndex + 2 ] / 255.0;
+				dstA = ( float ) dstData[ dstIndex + 3 ] / 255.0;
+				
+				outA = srcA + dstA * ( 1 - srcA );
+                
+				outR = ( srcR * srcA + dstR * dstA * ( 1 - srcA ) ) / outA;
+				outG = ( srcG * srcA + dstG * dstA * ( 1 - srcA ) ) / outA;
+				outB = ( srcB * srcA + dstB * dstA * ( 1 - srcA ) ) / outA;
+				
+				dstData[ dstIndex 	  ] = ( int ) ( outR * 255.0 );
+				dstData[ dstIndex + 1 ] = ( int ) ( outG * 255.0 );
+				dstData[ dstIndex + 2 ] = ( int ) ( outB * 255.0 );
+				dstData[ dstIndex + 3 ] = ( int ) ( outA * 255.0 );
+                
+                // printf( "\n%i : %f %f %f %i" , count , srcA , dstA , outA , dstData[ dstIndex + 3 ] );
+		
+			}
+			
+		}		
+		
+	}
+
+}

@@ -1,0 +1,459 @@
+#include "CLObject.clc"
+#include "CLDataList.clc"
+#include "GLUIModel.clc"
+#include "GLUIVertexArray.clc"
+#include <limits.h>
+
+
+GLUIModelDrawer:CLObject
+{
+
+    char needs_reload;
+    
+    GLint trafo_location;
+    GLint notex_location;
+
+	GLuint buffer_name;
+    GLuint buffer_size;
+    GLuint buffer_size_previous;
+
+	GLfloat* buffer_data;
+    CLDataList* arrays;
+    CLDataList* models_to_resend;
+    
+	int attribute_stride;
+	int* attribute_components;
+	long* attribute_offset_sizes;
+	GLuint attribute_counter;
+
+
+    // construcor
+
+    void init( )
+    {
+
+        CLObject:init( self );
+
+        needs_reload = 0;
+        
+        arrays:alloc( );
+        arrays:init( );
+
+        models_to_resend:alloc( );
+        models_to_resend:init( );
+        
+        trafo_location = 0;
+        notex_location = 0;
+
+        buffer_name = 0;
+        buffer_size = 0;
+        buffer_size_previous = 0;
+        buffer_data = NULL;
+
+		attribute_stride	= 0;
+		attribute_counter = 0;
+		attribute_components = malloc( sizeof( int ) );
+		attribute_offset_sizes = malloc( sizeof( long ) );
+        
+        // create buffer
+
+		glGenBuffers ( 1 , &buffer_name );
+        #ifdef DEBUG
+        gl_errors_show( "GenBuffers" );
+        #endif
+    
+    }
+    
+    
+    // destructor
+
+    void destruct( )
+    {
+    
+        arrays:release( );
+        models_to_resend:release( );
+
+		if ( buffer_name != 0 ) glDeleteBuffers( 1 , &buffer_name );
+        if ( buffer_data != NULL ) free( buffer_data );
+        
+        free( attribute_components );
+        free( attribute_offset_sizes );
+    
+        CLObject:destruct( self );
+    
+    }
+
+    
+	// adds attribute location
+	
+	void addAttribute_location_components_identifier( int the_location , int the_component_count , const char* the_identifier )
+	{
+    
+		attribute_components = realloc( attribute_components , sizeof( int ) * ( attribute_counter + 1 ) );
+		attribute_offset_sizes = realloc( attribute_offset_sizes , sizeof( long ) * ( attribute_counter + 1 ) );
+		
+		attribute_components[ attribute_counter ] = the_component_count;
+		attribute_offset_sizes[ attribute_counter ] = attribute_stride * sizeof( GLfloat );
+		
+		attribute_stride += the_component_count;
+		attribute_counter += 1;
+
+	}
+    
+    
+    // returns or creates vertex array in group-level-texture-trafo sequence
+    
+    GLUIVertexArray* get_array_for_group_level_texture_trafo(
+        GLuint the_group ,
+        GLuint the_level ,
+        GLuint the_texture ,
+        MLMatrix4* the_trafo )
+    {
+    
+        long counter = 0;
+        GLUIVertexArray* array;
+        GLUIVertexArray* newArray;
+    
+        struct CLLink* arrayLink = arrays.head;
+        
+        while ( arrayLink != NULL )
+        {
+
+            array = arrayLink->data;
+
+            if ( array.group > the_group )
+            {
+
+                newArray:alloc( );
+                newArray:init( the_group , the_level , the_texture , the_trafo );
+                arrays:add_data_at_index( newArray , counter );
+                return newArray;
+
+            }
+            else if ( array.group == the_group )
+            {
+            
+                if ( array.level > the_level )
+                {
+                    
+                    newArray:alloc( );
+                    newArray:init( the_group , the_level , the_texture , the_trafo );
+                    arrays:add_data_at_index( newArray , counter );
+                    return newArray;
+                
+                }
+                else if ( array.level == the_level )
+                {
+                
+                    if ( array.texture > the_texture )
+                    {
+                    
+                        newArray:alloc( );
+                        newArray:init( the_group , the_level , the_texture , the_trafo );
+                        arrays:add_data_at_index( newArray , counter );
+                        return newArray;
+
+                    }
+                    else if ( array.texture == the_texture )
+                    {
+                    
+                        if ( array.trafo == the_trafo ) return array;
+                    
+                    }
+                
+                }
+                
+            }
+
+            arrayLink = arrayLink->next;
+            counter++;
+        
+        }
+        
+        // not found, creating new
+
+        newArray:alloc( );
+        newArray:init( the_group , the_level , the_texture , the_trafo );
+        arrays:add_data( newArray );
+        
+//        for ( void* array_data : arrays )
+//        {
+//        
+//            GLUIVertexArray* array = array_data;
+//            printf( "\ngroup %i level %i texture %i count %li" , array.group , array.level , array.texture , array.models.length );
+//            
+//        }
+
+        return newArray;
+    
+    }
+
+
+    // adds model to drawer
+
+    void add_model_group_level_texture_trafo(
+        GLUIModel*  the_model ,
+        GLuint      the_group ,
+        GLuint      the_level ,
+        GLuint      the_texture ,
+        MLMatrix4*  the_trafo )
+    {
+
+        // printf( "\nadd_model %s group %u level %u texture %u trafo %llu" , the_model.name , the_group , the_level , the_texture , ( long long ) the_trafo );
+        
+        GLUIVertexArray* array = get_array_for_group_level_texture_trafo( the_group , the_level , the_texture , the_trafo );
+        
+        if ( array.models.contains_data( the_model ) == 0 )
+        {
+        
+            the_model.retain( );
+
+            buffer_size += the_model.data_size;
+
+            array.models.add_data( the_model );
+        
+        }
+        else printf( "\nWARNING : DOUBLE ADDITION ATTEMPT TO MODEL DRAWER" );
+        
+        needs_reload = 1;
+
+    }
+
+
+    // remove ui square
+
+    void remove_model_group_level_texture_trafo(
+        GLUIModel* the_model ,
+        GLuint the_group ,
+        GLuint the_level ,
+        GLuint the_texture ,
+        MLMatrix4* the_trafo )
+    {
+    
+        // printf( "\nremove_model %s group %u level %u texture %u trafo %llu" , the_model.name , the_group , the_level , the_texture , ( long long ) the_trafo );
+
+        GLUIVertexArray* array = get_array_for_group_level_texture_trafo( the_group , the_level , the_texture , the_trafo );
+
+        // don't remove twice
+        
+        char exists = array.models.remove_data( the_model );
+        
+        if ( exists == 1 )
+        {
+
+            the_model.release( );
+    
+            buffer_size -= the_model.data_size;
+        
+        }
+        else printf( "\nWARNING : DOUBLE REMOVAL ATTEMPT FROM MODEL DRAWER" );
+        
+        // remove and release empty array container
+        
+        if ( array.models.length == 0 )
+        {
+        
+            arrays.remove_data( array );
+            array:release( );
+            
+        }
+
+        needs_reload = 1;
+
+    }
+    
+
+    // uploads vertex buffer to gpu
+
+    void upload( )
+    {
+
+        // printf( "\nGLUIModelDrawer upload name %i size %i" , buffer_name , buffer_size );
+
+        GLuint bufferIndex;
+        GLuint vertexIndex;
+        GLfloat* buffer_data_temp;
+        GLUIModel* model;
+        
+        needs_reload = 0;
+        models_to_resend:remove_all_data( );
+        
+        bufferIndex = 0;
+        vertexIndex = 0;
+
+        // prepare buffer
+
+        if ( buffer_size_previous != buffer_size )
+        {
+
+            if ( buffer_data == NULL ) buffer_data = malloc( buffer_size );
+            else buffer_data = realloc( buffer_data , buffer_size );
+            
+            buffer_size_previous = buffer_size;
+
+        }
+        
+        buffer_data_temp = buffer_data;
+        
+        for ( void* array_data : arrays )
+        {
+        
+            GLUIVertexArray* array = array_data;
+            array.vertex_index = vertexIndex;
+            array.vertex_count = ( unsigned int ) array.models.length * 6;
+
+            for ( void* model_data : array.models )
+            {
+
+                model = model_data;
+                model.position_in_buffer = bufferIndex;
+                
+                memcpy( buffer_data_temp , model.data , model.data_size );
+                
+                // increase temp data pointer
+                
+                vertexIndex += model.vertex_count;
+                bufferIndex += model.data_size;
+                buffer_data_temp += model.data_size / sizeof( GLfloat );
+                
+            }
+                
+        }
+
+        glBindBuffer( GL_ARRAY_BUFFER , buffer_name );
+        glBufferData( GL_ARRAY_BUFFER ,
+                      buffer_size ,
+                      buffer_data ,
+                      GL_DYNAMIC_DRAW );
+        glBindBuffer( GL_ARRAY_BUFFER , 0 );
+
+        #ifdef DEBUG
+//        show buffer contents
+//        printf( "\nname %i size %i\n" , buffer_name , buffer_size );
+//        for ( int index = 0 ; index < buffer_size / sizeof( GLfloat ) ; index++ )
+//        {
+//            if ( index % 9 == 0 ) printf( "\n" );
+//            printf( "%.2f " , buffer_data[ index ] );
+//        }
+//        gl_errors_show( "BufferData" );
+        #endif
+        
+    }
+    
+    
+    // resends model parts to cpu
+    
+    void resend( )
+    {
+    
+        // printf( "\nGLUIModelDrawer.resend" );
+
+        GLUIModel* square;
+
+        glBindBuffer( GL_ARRAY_BUFFER , buffer_name );
+
+        for ( void* squareData : models_to_resend )
+        {
+
+            square = squareData;
+
+            glBufferSubData( GL_ARRAY_BUFFER ,
+                             square.position_in_buffer ,
+                             square.data_size ,
+                             square.data );
+            
+        }
+        
+        models_to_resend:remove_all_data( );
+        
+        glBindBuffer( GL_ARRAY_BUFFER , 0 );
+    
+    }
+
+
+    // renders buffer
+
+    void render( )
+    {
+
+        GLuint last_texture;
+        long long last_trafo;
+        
+        // upload vertex data if needed
+    
+        if ( needs_reload == 1 ) upload( );
+        if ( models_to_resend.length > 0 ) resend( );
+        
+        // bind buffer
+
+		glBindBuffer( GL_ARRAY_BUFFER , buffer_name );
+        
+		// enable vertex array attributes
+
+		for ( int index = 0 ;
+			  index < attribute_counter ;
+			  index++ )
+		{
+
+			// printf( "\ncomponents %i stride %i offsetsize %li" , attribute_components[ index ] , attribute_stride , attribute_offset_sizes[ index ] );
+
+			glEnableVertexAttribArray ( index );
+            
+			glVertexAttribPointer( 	index ,
+									attribute_components[ index ] ,
+									GL_FLOAT ,
+									GL_FALSE ,
+									attribute_stride * sizeof( GLfloat ),
+									( const GLvoid* )( attribute_offset_sizes[ index ] ) );
+		
+		}
+    
+        // draw arrays
+        
+        // printf( "\n" );
+        
+        last_trafo = 0;
+        last_texture = INT_MAX;
+        
+        for ( void* array_data : arrays )
+        {
+        
+            GLUIVertexArray* array = array_data;
+            
+            if ( last_texture != array.texture )
+            {
+            
+                // bind new texture if needed
+
+                glUniform1i( notex_location , ( int ) array.texture == 0 );
+                glBindTexture( GL_TEXTURE_2D , array.texture );
+                last_texture = array.texture;
+
+            }
+            
+            if ( last_trafo != ( long long ) array.trafo )
+            {
+            
+                // upload transformation matrix if needed
+
+                GLfloat trafoa[16];
+                MLMatrix4ToArray( array.trafo , trafoa );
+                glUniformMatrix4fv( trafo_location , 1 , 0 , trafoa );
+                last_trafo = ( long long ) array.trafo;
+
+            }
+
+            glDrawArrays( GL_TRIANGLES , array.vertex_index , array.vertex_count );
+            #ifdef DEBUG
+                gl_errors_show( "DrawArrays" );
+                // printf( "\nrendering array group %u level %u texture %u trafo %lli length %lu" , array.group , array.level , array.texture , ( long long ) array.trafo , array.models.length );
+                // MLMatrix4Describe( *(model.trafo) );
+            #endif
+
+        }
+        
+   		glBindBuffer( GL_ARRAY_BUFFER , 0 );
+
+    }
+
+}

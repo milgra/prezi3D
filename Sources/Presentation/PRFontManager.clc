@@ -1,0 +1,97 @@
+#include "CLObject.clc"
+#include "CLString.clc"
+#include "CLDataList.clc"
+#include "PRSettings.clc"
+#include "GLFontTrueType.clc"
+
+
+PRFontManager:CLObject
+{
+
+
+    CLDataList* fonts;
+    PRSettings* settings;
+
+
+    // constructor
+
+    void init_settings( PRSettings* the_settings )
+    {
+    
+        CLObject:init( self );
+        
+        fonts:alloc( );
+        fonts:init( );
+        
+        settings = the_settings;
+
+    }
+    
+    
+    // destructor
+    
+    void destruct( )
+    {
+    
+        fonts:release( );
+    
+        CLObject:destruct( self );
+
+    }
+    
+    
+    // return wanted font
+
+    GLFontTrueType* font_for_name_size_r_g_b(
+        char* the_name , 
+        float the_size , 
+        int the_r ,
+        int the_g ,
+        int the_b )
+    {
+    
+        GLFontTrueType* font;
+        
+        for ( void* fontData : fonts )
+        {
+        
+            font = fontData;
+            
+            if ( font.name == the_name && 
+                 font.font_size == the_size &&
+                 font.r == the_r &&
+                 font.g == the_g &&
+                 font.b == the_b ) return font;
+        
+        }
+        
+        // create path
+
+        CLString* path = settings.path_for_file( the_name );
+        char* path_c = path.c_string( );
+
+        // create font
+        
+        font:alloc( );
+        font:init_name_path_size_r_g_b(
+            the_name ,
+            path_c ,
+            the_size ,
+            the_r ,
+            the_g ,
+            the_b );
+        
+        // printf( "\ncreated font %s %f %i %i %i" , the_name , the_size , the_r , the_g , the_b );
+            
+        fonts:add_data( font );
+        
+        // cleanup
+        
+        path:release( );
+        free( path_c );
+        
+        return font;
+
+    }
+
+}

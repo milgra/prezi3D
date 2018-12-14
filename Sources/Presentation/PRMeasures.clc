@@ -1,0 +1,41 @@
+PRMeasures:CLObject
+{
+
+    float header_height;
+    float button_size;
+    float border;
+    
+    float header_font_size;
+    float normal_font_size;
+    
+    float centered_width_small;
+    float centered_width_large;
+    float centered_width_medium;
+    
+    float vertical_center;
+    float horizontal_center;
+
+    
+    void init_width_height( float the_width , float the_height )
+    {
+    
+        CLObject:init( self );
+        
+        border = the_width * .05;
+        
+        vertical_center = the_height / 2.0;
+        horizontal_center = the_width / 2.0;
+
+        header_height = the_height / 10.0;
+        button_size = the_height / 10.0;
+        
+        header_font_size = header_height * .5;
+        normal_font_size = header_height * .5;
+        
+        centered_width_small = the_width * .6;
+        centered_width_large = the_width * .9;
+        centered_width_medium = the_width * .7;
+
+    }
+
+}

@@ -1,0 +1,7 @@
+CLStringUTF8
+{
+
+    char* bytes;
+    long* indexes;
+
+}

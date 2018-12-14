@@ -1,0 +1,96 @@
+#include "CLObject.clc"
+#include "GLShader.clc"
+
+
+GLUIShader:GLShader
+{
+
+	
+	// constructor
+
+	void init( )
+	{
+	
+		// printf( "\nGLGLShader init" );
+
+		#ifdef OSX
+		const char* VERTEX =
+				"attribute   vec4 positionVector;\n"
+                "attribute   vec4 colorVector;\n"
+				"attribute   vec2 textureVector;\n"
+				"varying 	 vec2 textureVectorOut;\n"
+                "varying     vec4 colorVectorOut;\n"
+				"uniform     mat4 modelMatrix;\n"
+				"uniform     mat4 projectionMatrix;\n"
+				"void main ( )\n"
+				"{\n"
+				"gl_PointSize    = 1.0;\n"
+				"gl_Position     = modelMatrix * positionVector;\n"
+				"gl_Position     = projectionMatrix * gl_Position;\n"
+				"colorVectorOut = colorVector;\n"
+				"textureVectorOut = textureVector;\n"
+				"}\n";
+
+		const char* FRAGMENT =
+				"varying vec2 textureVectorOut;\n"
+                "varying vec4 colorVectorOut;\n"
+                "uniform int notex;\n"
+				"uniform sampler2D texture;\n"
+				"void main ( )\n"
+				"{\n"
+                "    if ( notex == 0 ) gl_FragColor = texture2D( texture , textureVectorOut);\n"
+				"    else gl_FragColor = colorVectorOut;\n"
+				"}\n";
+		#elif defined(IOS) || defined(BBY)
+		const char* VERTEX_ES =
+				"attribute   vec4 positionVector;\n"
+                "attribute   vec4 colorVector;\n"
+				"attribute   vec2 textureVector;\n"
+				"varying 	 lowp vec2 textureVectorOut;\n"
+                "varying     lowp vec4 colorVectorOut;\n"
+				"uniform     mat4 modelMatrix;\n"
+				"uniform     mat4 projectionMatrix;\n"
+				"void main ( )\n"
+				"{\n"
+				"gl_PointSize    = 1.0;\n"
+				"gl_Position     = modelMatrix * positionVector;\n"
+				"gl_Position     = projectionMatrix * gl_Position;\n"
+				"colorVectorOut = colorVector;\n"
+				"textureVectorOut = textureVector;\n"
+				"}\n";
+		const char* FRAGMENT_ES =
+				"varying lowp vec2 textureVectorOut;\n"
+                "varying lowp vec4 colorVectorOut;\n"
+                "uniform int notex;\n"
+				"uniform sampler2D texture;\n"
+				"void main ( )\n"
+				"{\n"
+                "    if ( notex == 0 ) gl_FragColor = texture2D( texture , textureVectorOut);\n"
+				"    else gl_FragColor = colorVectorOut;\n"
+				"}\n";
+		#endif
+        
+        GLShader:init_name( self , "UI PT32" );
+		
+		#ifdef OSX
+		add_vertex_shader_source( VERTEX );
+		add_fragment_shader_source( FRAGMENT );
+		#elif defined(IOS) || defined(BBY)
+		add_vertex_shader_source( VERTEX_ES );
+		add_fragment_shader_source( FRAGMENT_ES );
+        #else
+        printf( "Don't forget to set OSX, IOS, BBY macros!!!" );
+		#endif
+
+		add_attribute_identifier_location( "positionVector" , 0 );
+		add_attribute_identifier_location( "colorVector" , 1 );
+		add_attribute_identifier_location( "textureVector" , 2 );
+		add_uniform_identifier( "projectionMatrix" );
+		add_uniform_identifier( "modelMatrix" );
+		add_uniform_identifier( "texture" );
+		add_uniform_identifier( "notex" );
+		link( );
+
+	}
+
+}

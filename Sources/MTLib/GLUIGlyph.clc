@@ -1,0 +1,216 @@
+#include "GLUIElement.clc"
+#include "TLFontMetrics.clc"
+#include "GLUITrafo.clc"
+#include "GLUITrafoAnimator.clc"
+#include "GLUITrafoAnimation.clc"
+
+
+GLUIGlyph:GLUIElement
+{
+
+    int codepoint;
+    
+    char visible;
+    char animated;
+    char expanded;
+
+    MLVector4 texcoords;
+    TLFontMetrics* metrics;
+    
+    GLUITrafoAnimator* animator;
+
+
+    // constructor
+
+    void init_name_frame( char* the_name , MLVector4 the_frame )
+    {
+    
+        GLUIElement:init_name_frame( self , the_name , the_frame );
+
+        visible = 1;
+        animated = 0;
+        expanded = 1;
+        
+        animator:alloc( );
+        animator:init( );
+        animator.delegate = ( CLObject* ) self;
+    
+    }
+    
+    
+    // destructor
+    
+    void destruct( )
+    {
+    
+        animator:release( );
+    
+        GLUIElement:destruct( self );
+    
+    }
+    
+    
+    // shrink glyph horizontally for imitating masking in text areas
+    
+    void shrink( float the_size , char the_side )
+    {
+    
+        float tex_dx;
+
+        expanded = 0;
+        
+        if ( the_size > 0 )
+        {
+        
+            // calculate new texture coordinate scaling
+
+            tex_dx = texcoords.z - texcoords.x;
+            tex_dx *= the_size / (metrics.frame).z;
+        
+            if ( the_side == 0 )
+            {
+            
+                // align left
+
+                set_origo( MLVector3Create( (metrics.frame).x + (metrics.frame).z - the_size , -(metrics.frame).y , 0 ) );
+                set_extent( MLVector3Create( the_size , -(metrics.frame).w , 0 ) );
+                
+                set_texture_coords(
+                    MLVector4Create(
+                        texcoords.z - tex_dx ,
+                        texcoords.y ,
+                        texcoords.z ,
+                        texcoords.w ) );
+            
+            }
+            else
+            {
+            
+                // align right
+            
+                set_extent( MLVector3Create( the_size , -(metrics.frame).w , 0 ) );
+
+                set_texture_coords(
+                    MLVector4Create(
+                        texcoords.x ,
+                        texcoords.y ,
+                        texcoords.x + tex_dx ,
+                        texcoords.w ) );
+            
+            }
+        
+        }
+    
+    }
+    
+    
+    // expand glpyh horizontally into its normal state
+    
+    void expand( )
+    {
+    
+        if ( expanded == 0 )
+        {
+        
+            expanded = 1;
+    
+            set_origo( MLVector3Create( roundf( (metrics.frame).x ) , roundf( -(metrics.frame).y ) , 0 ) );
+            set_extent( MLVector3Create( (metrics.frame).z , -(metrics.frame).w , 0 ) );
+            set_texture_coords( texcoords );
+            
+        }
+    
+    }
+
+
+    // animate to position from far Z
+
+    void animate_to_position( int the_steps )
+    {
+    
+        if ( animated == 0 )
+        {
+        
+            animated = 1;
+        
+            // set animation
+
+            GLUITrafoAnimation* animation;
+            GLUITrafo* old_trafo;
+            GLUITrafo* new_trafo;
+
+            old_trafo:alloc( );
+            old_trafo:init( );
+            
+            (old_trafo.scale).x = 2.0;
+            (old_trafo.scale).y = 2.0;
+            (old_trafo.translation).z = 1000.0;
+
+            new_trafo:alloc( );
+            new_trafo:init( );
+
+            animation:alloc( );
+            animation:init_start_end_steps_easing( old_trafo , old_trafo , the_steps , 1 );
+            animator:add_animation( animation );
+            animation:release( );
+
+            animation:alloc( );
+            animation:init_start_end_steps_easing( old_trafo , new_trafo , 50 , 1 );
+            animator:add_animation( animation );
+            animation:release( );
+
+            set_trafo( old_trafo:matrix( ) , 0 );
+            
+            old_trafo:release( );
+            new_trafo:release( );
+
+        }
+        
+    }
+
+    
+    // updates element
+    
+    void update( )
+    {
+
+        // update animator
+        
+        if ( animator.animation != NULL )
+        {
+        
+            needs_redraw = 1;
+            MLMatrix4 new_trafo = MLMatrix4CreateIdentity( );
+            new_trafo = MLMatrix4Translate( new_trafo , combined_origo.x + extent.x / 2, combined_origo.y + extent.y / 2 , 0 );
+            new_trafo = MLMatrix4Multiply( new_trafo , animator.animation.actual.matrix( ) );
+            new_trafo = MLMatrix4Translate( new_trafo , - combined_origo.x - extent.x / 2, - combined_origo.y - extent.y / 2 , 0 );
+            set_trafo( new_trafo , 0 );
+        
+            animator:update( );
+            
+        }
+        
+        GLUIElement:update( self );
+    
+    }
+    
+    
+    // generic event
+    
+    void event( int the_id , void* the_source , void* the_data )
+    {
+
+        // animation ended
+
+        if ( the_id == kGLUITrafoAnimatorFinished )
+        {
+
+            animated = 0;
+            set_trafo( MLMatrix4CreateIdentity( ) , 1 );
+
+        }
+    
+    }
+    
+    
+}

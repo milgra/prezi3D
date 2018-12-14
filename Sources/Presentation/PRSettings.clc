@@ -1,0 +1,51 @@
+#include "CLObject.clc"
+#include "CLString.clc"
+
+
+PRSettings:CLObject
+{
+
+    CLString* font_path;
+    CLString* resources_path;
+
+
+    void init_resources_path( char* the_path )
+    {
+    
+        CLObject:init( self );
+        
+        font_path:alloc( );
+        font_path:init_cstring( the_path );
+        font_path:append_cstring( "/Avenir.ttc" );
+
+        resources_path:alloc( );
+        resources_path:init_cstring( the_path );
+
+    }
+    
+    
+    void destruct( )
+    {
+    
+        CLObject:destruct( self );
+
+    }
+    
+    
+    CLString* path_for_file( char* the_file )
+    {
+    
+        CLString* result;
+        
+        result:alloc( );
+        result:init( );
+        result:append_string( resources_path );
+        result:append_cstring( "/" );
+        result:append_cstring( the_file );
+
+        return result;
+    
+    }
+
+
+}

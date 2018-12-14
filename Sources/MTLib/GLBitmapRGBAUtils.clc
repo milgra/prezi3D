@@ -1,0 +1,149 @@
+//
+//  Font and other utilites for GLBitmapRGBA
+//
+
+#include "GLBitmapRGBA.clc"
+#include "TLPixelFont.clc"
+#include "TLPixelText.clc"
+#include "TLSTBTrueTypeFont.h"
+#include "loadpng.h"
+
+
+GLBitmapRGBAUtils
+{
+
+
+    GLBitmapRGBA* create_bitmap_width_height_text_size(
+        int the_width ,
+        int the_height ,
+        char* the_text ,
+        int the_size )
+    {
+
+		int index;
+		float x , y , dx , dy;
+		float* cdata;
+		struct CLLink* link;
+        GLBitmapRGBA* bitmap;
+		TLPixelFont* font;
+        TLPixelText* pixelText;
+
+		pixelText:alloc( );
+		pixelText:init_cstring( the_text );   // needs release
+
+		bitmap:alloc( );
+        bitmap:init_width_height( the_width , the_height ); // needs release
+        
+		dx = ( float ) bitmap.width  - pixelText.width  * the_size;
+		dy = ( float ) bitmap.height - pixelText.height * the_size;
+
+		dx /= 2;
+		dy /= 2;
+		
+		link = pixelText.letters.head;
+		
+		while ( link != NULL )
+		{
+		
+			font = link->data;
+			cdata = font.data;
+			
+			if ( font.length > 0 )
+			{
+			
+				for ( index = 0 ;
+					  index < font.length ;
+					  index += 2 )
+				{
+                
+                    x = ( int ) dx + cdata[ index ] * the_size;
+                    y = ( int ) dy + cdata[ index + 1 ] * the_size;
+				
+					bitmap.fill_sx_sy_ex_ey_r_g_b_a(  
+                        x ,
+						y ,
+                        x + the_size ,
+                        y + the_size ,
+                        1 ,
+                        1 ,
+                        1 ,
+                        1 );
+
+				}
+
+			}
+			
+			dx += font.width * the_size;
+									
+			link = link->next;
+			
+		}
+        
+		bitmap:add_shadow( );
+        
+        pixelText:release( );
+        
+        return bitmap;
+    
+    }
+
+    
+    GLBitmapRGBA* create_bitmap_map_width_height_r_g_b( 
+        unsigned char* the_map , 
+        int the_width , 
+        int the_height , 
+        int r , 
+        int g , 
+        int b )
+    {
+        
+        int index;
+        GLBitmapRGBA* bitmap;
+        
+		bitmap:alloc( );
+        bitmap:init_width_height( the_width , the_height );
+
+		for ( index = 0 ; index < the_width * the_height ; index++ )
+		{
+
+            bitmap.data[ index * 4 	   ] = r;
+            bitmap.data[ index * 4 + 1 ] = g;
+            bitmap.data[ index * 4 + 2 ] = b;
+            bitmap.data[ index * 4 + 3 ] = the_map[ index ];
+
+		}
+    
+        return bitmap;
+    
+    }
+    
+    
+    GLBitmapRGBA* create_bitmap_pngpath( char* the_path )
+    {
+    
+        GLBitmapRGBA* bitmap;
+        unsigned char* image = NULL;
+        unsigned width = 0;
+        unsigned height = 0;
+        
+        if ( the_path != NULL )
+        {
+
+            int x,y,n;
+            image = stbi_load( the_path , &x , &y , &n , 4 );
+            
+            width = x;
+            height = y;
+        
+        }
+        
+        bitmap:alloc( );
+        bitmap:init_width_height( width , height );
+        free( bitmap.data );
+        bitmap.data = image;
+        
+        return bitmap;
+    
+    }
+
+}

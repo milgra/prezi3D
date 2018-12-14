@@ -1,0 +1,96 @@
+#include "CLObject.clc"
+#include "PLIKPoint.clc"
+
+
+#define kSpacerTypeRigid    0
+#define kSpacerTypeElastic  1
+#define kSpacerTypeFlexible 2
+
+
+PLIKSpacer:CLObject
+{
+
+    PLIKPoint* point_a;
+    PLIKPoint* point_b;
+
+    float distance;
+    unsigned char type;
+
+
+    void init(  unsigned char the_type ,
+                float the_distance ,
+                PLIKPoint* the_point_a ,
+                PLIKPoint* the_point_b )
+    {
+    
+        CLObject:init( self );
+
+        point_a = the_point_a;
+        point_b = the_point_b;
+        
+        type     = the_type;
+        distance = the_distance;
+
+    }
+
+
+    void respace_from_point( PLIKPoint* the_point )
+    {
+
+        PLIKPoint* peer_a = the_point;
+        PLIKPoint* peer_b = the_point == point_a ? (point_b) : (point_a);
+        
+        if ( peer_b.is_reached == 0 )
+        {
+        
+            if ( peer_b.is_fixed == 0 )
+            {
+
+                float dx = peer_b.x - peer_a.x;
+                float dy = peer_b.y - peer_a.y;
+                
+                float angle = atan2( dy , dx );
+
+                if ( type == kSpacerTypeRigid )
+                {
+
+                    peer_b.x = peer_a.x + cos( angle ) * distance;
+                    peer_b.y = peer_a.y + sin( angle ) * distance;
+                
+                }
+                else if ( type == kSpacerTypeFlexible )
+                {
+
+                    double actual_distance = dy / sin( angle );
+
+                    if ( actual_distance > distance )
+                    {
+                    
+                        peer_b.x = peer_a.x + cos( angle ) * distance;
+                        peer_b.y = peer_a.y + sin( angle ) * distance;
+                    
+                    }
+                
+                }
+                else if ( type == kSpacerTypeElastic )
+                {
+                
+                    double actual_distance = dy / sin( angle );
+                    double difference = ( distance + actual_distance ) / 2;
+
+                    peer_b.x = peer_a.x + cos( angle ) * difference;
+                    peer_b.y = peer_a.y + sin( angle ) * difference;
+                
+                }
+                
+            }
+            
+            // update peer_b
+            
+            peer_b.update( );
+        
+        }
+
+    }
+
+}

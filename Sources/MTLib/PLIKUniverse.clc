@@ -1,0 +1,174 @@
+#include "CLObject.clc"
+#include "CLObjectList.clc"
+#include "PLIKPoint.clc"
+#include "PLIKSpacer.clc"
+
+
+PLIKUniverse:CLObject
+{
+
+    CLObjectList* end_points;
+    CLObjectList* fix_points;
+    CLObjectList* points;
+    CLObjectList* spacers;
+    
+    
+    void init( )
+    {
+    
+        // printf( "\nPLIKnUniverse init" );
+    
+        CLObject:init( self );
+    
+        end_points:alloc( );
+        end_points:init( );
+
+        fix_points:alloc( );
+        fix_points:init( );
+
+        points:alloc( );
+        points:init( );
+
+        spacers:alloc( );
+        spacers:init( );
+
+    }
+    
+    
+    void destruct( )
+    {
+
+        // printf( "\nPLIKnUniverse destruct" );
+
+        fix_points:release( );
+        end_points:release( );
+        points:release( );
+        spacers:release( );
+        
+        CLObject:destruct( self );
+    
+    }
+    
+    
+    void add_spacer( PLIKSpacer* the_spacer )
+    {
+    
+        spacers:add_object( ( CLObject* ) the_spacer );
+    
+    }
+
+
+    void add_point( PLIKPoint* the_point )
+    {
+    
+        points:add_object( ( CLObject* ) the_point );
+        
+        if ( the_point.is_fixed == 1 ) fix_points:add_object( ( CLObject* ) the_point );
+    
+    }
+
+
+    void add_endPoint( PLIKPoint* the_point )
+    {
+    
+        end_points:add_object( ( CLObject* ) the_point );
+    
+    }
+
+
+    // simulation step
+
+    void update( )
+    {
+    
+        PLIKPoint* point;
+    
+        for ( CLObject* point_object : end_points )
+        {
+
+            point = ( PLIKPoint* ) point_object;
+            point.update( );
+        
+        }
+
+        for ( CLObject* point_object : points )
+        {
+
+            point = ( PLIKPoint* ) point_object;
+            point.is_reached = 0;
+
+        }
+        
+        if ( fix_points.length > 0 )
+        {
+
+            for ( CLObject* pointO : fix_points )
+            {
+
+                point = ( PLIKPoint* ) pointO;
+                point.update( );
+            
+            }
+
+
+            for ( CLObject* pointO : points )
+            {
+
+                point = ( PLIKPoint* ) pointO;
+                point.is_reached = 0;
+
+            }
+            
+        }
+
+    }
+
+
+    void drag_x_y( float the_x , float the_y )
+    {
+    
+        PLIKPoint* point;
+
+        end_points:remove_all_objects( );
+    
+        for ( CLObject* point_object : points )
+        {
+        
+            point = ( PLIKPoint* ) point_object;
+            
+            if ( point.is_fixed == 0 )
+            {
+        
+                if ( fabs( point.x - the_x ) < 30 &&
+                     fabs( point.y - the_y ) < 30 )
+                {
+                
+                    end_points:add_object( point_object );
+                    break;
+                
+                }
+                
+            }
+
+        }
+    
+    }
+    
+    
+    void move_x_y( float the_x , float the_y )
+    {
+
+        PLIKPoint* point;
+    
+        for ( CLObject* object : end_points )
+        {
+    
+            point = ( PLIKPoint* ) object;
+            point.x = the_x;
+            point.y = the_y;
+            
+        }
+    
+    }
+
+}

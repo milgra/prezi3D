@@ -1,0 +1,343 @@
+#ifdef OSX
+#include <OpenGL/gl3.h>
+#elif defined IOS
+#include <OpenGLES/ES2/gl.h>
+#include <OpenGLES/ES2/glext.h>
+#endif
+#include "MLVector4.h"
+#include "CLString.clc"
+#include "CLObject.clc"
+#include "CLDataList.clc"
+#include "PRLifeRoom.clc"
+#include "PRSettings.clc"
+#include "PRMeasures.clc"
+#include "PRInfoView.clc"
+#include "PRFontManager.clc"
+#include "GLUIImageArea.clc"
+#include "GLUIElement.clc"
+#include "GLUIController.clc"
+#include "GLUITrafo.clc"
+#include "PRCodingRoom.clc"
+#include "PRDesignRoom.clc"
+#include "PRMusicRoom.clc"
+#include "PRRoom.clc"
+
+
+PRController:CLObject
+{
+
+    int view_index;
+    char* pressed_key;
+    char left_is_pressed;
+    char right_is_pressed;
+    float width;
+    float height;
+    
+    MLVector3 mouse_up_coords;
+    MLVector3 mouse_down_coords;
+    MLVector3 mouse_move_coords;
+
+    PRLifeRoom* life_room;
+    PRCodingRoom* coding_room;
+    PRDesignRoom* design_room;
+    PRMusicRoom* music_room;
+    PRRoom* actual_room;
+
+    PRInfoView* info_view;
+    PRInfoView* room_view;
+    PRInfoView* start_view;
+    PRInfoView* zoomed_view;
+    
+    PRSettings* settings;
+    PRMeasures* measures;
+    PRFontManager* font_manager;
+    GLUIController* ui_controller;
+    CLDataList* info_views;
+    
+
+    // constructor
+
+    void init_width_height_resources_path(
+        float the_width ,
+        float the_height ,
+        char* the_resources_path )
+    {
+
+        CLObject:init( self );
+        
+        left_is_pressed = 0;
+        right_is_pressed = 0;
+        
+        width = the_width;
+        height = the_height;
+        pressed_key = NULL;
+        view_index = -1;
+        
+        info_views:alloc( );
+        info_views:init( );
+        
+        mouse_down_coords = MLVector3Create( 0 , 0 , 0 );
+        mouse_move_coords = MLVector3Create( 0 , 0 , 0 );
+        mouse_up_coords = MLVector3Create( 0 , 0 , 0 );
+
+        ui_controller:alloc( );
+        ui_controller:init_fov_width_height_nead_far( M_PI / 4 , width , height , 50.0 , 20000.0 );
+        
+        settings:alloc( );
+        settings:init_resources_path( the_resources_path );
+
+        measures:alloc( );
+        measures:init_width_height( the_width , the_height );
+
+        font_manager:alloc( );
+        font_manager:init_settings( settings );
+
+        info_view:alloc( );
+        info_view:init_name_frame_controller(
+            "info_view" ,
+            MLVector4Create( 0 , 0 , 800 , -600 ) ,
+            self );
+        info_view:set_color( 0,0,0,0 );
+        info_view:set_level( 0 );
+        info_view:set_title_label( "Milan Toth" );
+        info_view:set_subtitle_label( "3D presentation demo and introduction" );
+        info_view:set_description_label( "This demo uses KineticUI, the OpenGL based, multiplatform UI and Text renderer. Navigate with arrows or clicks. http://milgra.com" );
+
+//        info_views:add_data( info_view );
+
+        ui_controller:add_element( ( GLUIElement* ) info_view );
+        info_view:show( );
+
+        zoomed_view = info_view;
+        info_view.info_shown = 1;
+
+        life_room:alloc( );
+        life_room:init_name_frame_controller( "room" , MLVector4Create( 0,0,0,0) , self );
+        life_room:set_trafo( MLMatrix4CreateTranslation( 0 , -1000 , 240 ) , 0 );
+        life_room:set_level( 2 );
+
+        music_room:alloc( );
+        music_room:init_name_frame_controller( "room" , MLVector4Create( 0,0,0,0) , self );
+        music_room:set_trafo( MLMatrix4CreateTranslation( 1500 , -1000 , 240 ) , 0 );
+        music_room:set_level( 2 );
+
+        design_room:alloc( );
+        design_room:init_name_frame_controller( "room" , MLVector4Create( 0,0,0,0) , self );
+        design_room:set_trafo( MLMatrix4CreateTranslation( 3000 , -1000 , 240 ) , 0 );
+        design_room:set_level( 2 );
+
+        coding_room:alloc( );
+        coding_room:init_name_frame_controller( "room" , MLVector4Create( 0,0,0,0) , self );
+        coding_room:set_trafo( MLMatrix4CreateTranslation( 4500 , -1000 , 240 ) , 0 );
+        coding_room:set_level( 2 );
+
+        ui_controller:add_element( ( GLUIElement* ) life_room );
+        ui_controller:add_element( ( GLUIElement* ) music_room );
+        ui_controller:add_element( ( GLUIElement* ) design_room );
+        ui_controller:add_element( ( GLUIElement* ) coding_room );
+        
+        life_room.next_room = ( PRRoom* ) music_room;
+        life_room.last_room = ( PRRoom* ) coding_room;
+        
+        music_room.next_room = ( PRRoom* ) design_room;
+        music_room.last_room = ( PRRoom* ) life_room;
+        
+        design_room.next_room = ( PRRoom* ) coding_room;
+        design_room.last_room = ( PRRoom* ) music_room;
+        
+        coding_room.next_room = ( PRRoom* ) life_room;
+        coding_room.last_room = ( PRRoom* ) design_room;
+        
+        actual_room = ( PRRoom* ) life_room;
+        
+    }
+    
+    
+    void build( )
+    {
+
+        life_room:build( );
+    
+    }
+
+
+    // destructor
+
+    void destruct( )
+    {
+    
+        constants:release( );
+        ui_controller:release( );
+
+        CLObject:destruct( self );
+
+    }
+    
+    
+    void step_right( )
+    {
+    
+        if ( view_index == -1 )
+        {
+
+            view_index = 0;
+            PRInfoView* next_info_view = life_room.info_views.data_at_index( 0 );
+            ui_controller:zoom_to_element( ( GLUIElement* ) next_info_view , 150 , kGLUIAnimationEaseIn );
+        
+        }
+        else
+        {
+    
+            actual_room.step_right( );
+            
+        }
+
+    }
+    
+    
+    void step_left( )
+    {
+
+        actual_room.step_left( );
+    
+    }
+
+
+    // simulation update
+    
+    void update( )
+    {
+    
+        //open_view( );
+    
+        ui_controller:update( );
+
+        if ( pressed_key != NULL )
+        {
+        
+            ui_controller:key_down_characters( pressed_key );
+            pressed_key = NULL;
+
+        }
+        
+        if ( left_is_pressed == 1 )
+        {
+        
+            left_is_pressed = 0;
+            
+            step_left( );
+        
+        }
+
+        if ( right_is_pressed == 1 )
+        {
+
+            right_is_pressed = 0;
+            
+            step_right( );
+        
+        }
+        
+        if ( mouse_down_coords.z > 0.0 )
+        {
+
+            ui_controller:mouse_down_at_x_y( mouse_down_coords.x , mouse_down_coords.y );
+            mouse_down_coords.z = 0.0;
+
+        }
+        
+        if ( mouse_move_coords.z > 0.0 )
+        {
+
+            ui_controller:mouse_move_at_x_y( mouse_move_coords.x , mouse_move_coords.y );
+            mouse_move_coords.z = 0.0;
+            
+        }
+        
+        if ( mouse_up_coords.z > 0.0 )
+        {
+
+            ui_controller:mouse_up_at_x_y( mouse_up_coords.x , mouse_up_coords.y );
+            mouse_up_coords.z = 0.0;
+            
+        }
+
+    }
+    
+    
+    // rendering step
+    
+    void render( )
+    {
+
+        ui_controller:render( );
+        
+    }
+
+
+    // mouse events
+
+    void scroll_x_y( float the_x , float the_y )
+    {
+    
+        ui_controller:scroll_x_y( the_x , the_y );
+        
+    }
+    
+
+    void mouse_down_at_x_y( float the_x , float the_y )
+    {
+    
+        mouse_down_coords.x = the_x;
+        mouse_down_coords.y = the_y;
+        mouse_down_coords.z = 1.0;
+        
+    }
+    
+    
+    void mouse_up_at_x_y( float the_x , float the_y )
+    {
+
+        mouse_up_coords.x = the_x;
+        mouse_up_coords.y = the_y;
+        mouse_up_coords.z = 1.0;
+
+    }
+    
+    
+    void mouse_move_at_x_y( float the_x , float the_y )
+    {
+
+        mouse_move_coords.x = the_x;
+        mouse_move_coords.y = the_y;
+        mouse_move_coords.z = 1.0;
+        
+    }
+    
+    
+    void left_pressed( )
+    {
+    
+        left_is_pressed = 1;
+    
+    }
+
+
+    void right_pressed( )
+    {
+
+        right_is_pressed = 1;
+    
+    }
+    
+    
+    void key_down_characters( char* the_characters )
+    {
+    
+        if ( pressed_key != NULL ) free( pressed_key );
+        pressed_key = malloc( sizeof( char ) * strlen( the_characters ) );
+        memcpy( pressed_key , the_characters , strlen( the_characters ) );
+
+    }
+
+}

@@ -1,0 +1,334 @@
+#include "CLObject.clc"
+
+
+#define kPLScrollerMargin 100.0
+
+// one-dimensional scroll dynamics
+
+PLScroller:CLObject
+{
+
+    char sinus;
+    char linear;
+    char automatic;
+    char active;
+    
+    float step;
+    float velocity;
+
+    float visible_size;
+    float content_size;
+    float content_head;
+    
+    float sinus_head;
+    float sinus_angle;
+    float sinus_radius;
+
+
+    // constructor
+
+    void init( )
+    {
+    
+        CLObject:init( self );
+        
+        sinus = 0;
+        linear = 0;
+        automatic = 0;
+        velocity = 0;
+        active = 0;
+        
+        visible_size = 0;
+        content_size = 0;
+        content_head = 0;
+        
+        sinus_head = 0;
+        sinus_angle = 0;
+        sinus_radius = 0;
+
+    }
+    
+    
+    void setup_sinus( )
+    {
+        
+        if ( content_head < 0 )
+        {
+        
+            if ( content_size > visible_size )
+            {
+            
+                if ( content_head + content_size < visible_size )
+                {
+
+                    sinus = 1;
+                    active = 1;
+                    automatic = 0;
+                    sinus_angle = M_PI / 2;
+                    sinus_head = visible_size - content_size;
+                    sinus_radius = - ( visible_size - ( content_head + content_size ) );
+                    
+                }
+
+            }
+            else
+            {
+            
+                sinus = 1;
+                active = 1;
+                automatic = 0;
+                sinus_angle = M_PI / 2;
+                sinus_head = 0;
+                sinus_radius = content_head;
+            
+            }
+            
+        }
+        else
+        {
+
+            sinus = 1;
+            active = 1;
+            automatic = 0;
+            sinus_angle = M_PI / 2;
+            sinus_head = 0;
+            sinus_radius = content_head;
+        
+        }
+        
+    }
+    
+    
+    // simulation update
+    
+    void update( )
+    {
+    
+        if ( automatic == 1 )
+        {
+        
+            velocity *= .9;
+
+            if ( velocity < 0 )
+            {
+            
+                if ( content_size > visible_size )
+                {
+                
+                    if ( content_head + content_size < visible_size )
+                    {
+
+                        velocity *= .4;
+
+                    }
+
+                }
+                else if ( content_head < 0 )
+                {
+                
+                    velocity *= .4;
+                
+                }
+                
+            }
+            else
+            {
+            
+                if ( content_head > 0 )
+                {
+
+                    velocity *= .4;
+
+                }
+            
+            }
+
+            content_head += velocity;
+            
+            if ( fabs( velocity ) < .1 )
+            {
+
+                active = 0;
+                velocity = 0;
+                automatic = 0;
+                setup_sinus( );
+                
+            }
+        
+        }
+        else if ( sinus == 1 )
+        {
+        
+            content_head = sinus_head + sinf( sinus_angle ) * sinus_radius;
+            sinus_angle += .2;
+            sinus_radius *= .91;
+            
+            if ( fabs( sinus_radius ) < .01 )
+            {
+            
+                sinus = 0;
+                active = 0;
+            
+            }
+        
+        }
+        else if ( linear == 1 )
+        {
+        
+            content_head += velocity;
+        
+            step++;
+            
+            if ( step == 10 )
+            {
+                linear = 0;
+                active = 0;
+            }
+        
+        }
+
+    }
+
+
+    // scroll with delta and release
+    
+    void scroll_delta_auto( float the_value , char the_flag )
+    {
+
+        // printf( "\nPLScroller scroll %f content %f visible %f" , the_value , content_size , visible_size );
+
+        sinus = 0;
+        automatic = 0;
+        
+        if ( the_value < 0 )
+        {
+        
+            if ( content_size > visible_size )
+            {
+            
+                if (  content_head + content_size < visible_size )
+                {
+
+                    if ( content_head + content_size + kPLScrollerMargin < visible_size ) the_value = 2;
+                    else
+                    {
+
+                        float ratio = ( ( content_head + content_size + kPLScrollerMargin ) - visible_size ) / kPLScrollerMargin;
+                        the_value *= ratio;
+
+                    }
+
+                }
+
+            }
+            else if ( content_head < 0 )
+            {
+            
+                if ( content_head < -kPLScrollerMargin ) the_value = 2;
+                else
+                {
+
+                    float ratio = ( -kPLScrollerMargin - content_head ) / kPLScrollerMargin;
+                    the_value *= -ratio;
+                
+                }
+            
+            }
+            
+        }
+        else
+        {
+        
+            if ( content_head > 0 )
+            {
+
+                if ( content_head > kPLScrollerMargin ) the_value = 2;
+                else
+                {
+
+                    float ratio = ( kPLScrollerMargin - content_head ) / kPLScrollerMargin;
+                    the_value *= ratio;
+                
+                }
+
+            }
+        
+        }
+
+        content_head += the_value;
+        
+        if ( the_flag )
+        {
+        
+            velocity = the_value * 3;
+            active = 1;
+            linear = 0;
+            automatic = 1;
+            setup_sinus( );
+
+        }
+        else active = 1;
+
+    }
+    
+    
+    void scroll_to_end( )
+    {
+    
+        velocity = ( ( visible_size - content_size ) - content_head ) / 10.0;
+
+        if ( fabs( velocity ) > .01 )
+        {
+
+            step = 0;
+            sinus = 0;
+            linear = 1;
+            active = 1;
+            automatic = 0;
+        
+        }
+    
+
+    }
+    
+    
+    void scroll_to_start( )
+    {
+
+        velocity = ( 0 - content_head ) / 10.0;
+        
+        if ( fabs( velocity ) > .01 )
+        {
+        
+            active = 1;
+            
+            step = 0;
+            sinus = 0;
+            linear = 1;
+            automatic = 0;
+            
+        }
+    
+    }
+
+
+    void scroll_to_position( float the_position )
+    {
+
+        velocity = ( the_position - content_head ) / 10.0;
+        
+        if ( fabs( velocity ) > .01 )
+        {
+        
+            active = 1;
+            
+            step = 0;
+            sinus = 0;
+            linear = 1;
+            automatic = 0;
+            
+        }
+    
+    }
+
+}

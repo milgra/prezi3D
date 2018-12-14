@@ -1,0 +1,461 @@
+#include "MLMatrix4.h"
+#include "MLMatrix4Utils.h"
+#include "CLObject.clc"
+#include "CLDataList.clc"
+#include "GLUIShader.clc"
+#include "GLUIElement.clc"
+#include "GLUITrafo.clc"
+#include "GLUIModelDrawer.clc"
+#include "GLUITrafoAnimator.clc"
+#include "GLUITrafoAnimation.clc"
+
+
+GLUIController:CLObject
+{
+
+    char needs_redraw;
+    char mouse_is_down;
+    GLuint projection_ul;
+    
+    float fov_x;
+    float fov_y;
+    float eye_z;
+    float width;
+    float height;
+
+    GLUIElement* touched;
+    GLUIElement* focused;
+
+    GLUIShader* shader;
+    GLUIElement* base;
+    GLUIModelDrawer* drawer;
+
+    GLUITrafo* view_trafo;
+    GLUITrafoAnimator* view_animator;
+
+	MLMatrix4 view_matrix;
+	MLMatrix4 projection_matrix;
+	MLMatrix4 perspective_matrix;
+    
+
+    // constructor
+    // calculating the pixel-perfect distance from eye
+    // getting distance where ndc( 0 , 1 ) is screen space ( width / 2 , height )
+    // in opengl fov is vertically fixed
+    // tan( fov / 2 ) = ( height / 2 ) / z;
+
+    void init_fov_width_height_nead_far(
+        float the_fov ,
+        float the_width ,
+        float the_height ,
+        float the_near,
+        float the_far )
+    {
+    
+        CLObject:init( self );
+        
+        shader:alloc( );
+        shader:init( );
+
+        drawer:alloc( );
+        drawer:init( );
+		drawer:addAttribute_location_components_identifier( 0 , 3 , "positionVector" );
+		drawer:addAttribute_location_components_identifier( 1 , 4 , "colorVector" );
+		drawer:addAttribute_location_components_identifier( 2 , 2 , "textureVector" );
+        drawer.trafo_location = shader.uniform_location_for_identifier( "modelMatrix" );
+        drawer.notex_location = shader.uniform_location_for_identifier( "notex" );
+        
+        view_animator:alloc( );
+        view_animator:init( );
+        
+        view_trafo:alloc( );
+        view_trafo:init( );
+
+        base:alloc( );
+        base:init_name_frame( "Base" , MLVector4Create( 0.0 , 0.0 , 0.0 , 0.0 ) );
+        base:set_trafo( MLMatrix4CreateIdentity( ) , 0 );
+        base.drawer = drawer;
+        
+        touched = NULL;
+        focused = NULL;
+        
+        width = the_width;
+        height = the_height;
+        
+        needs_redraw = 1;
+        mouse_is_down = 0;
+        projection_ul = shader.uniform_location_for_identifier( "projectionMatrix" );
+        
+        fov_x = the_fov * width / height;
+        fov_y = the_fov;
+        eye_z = ( height / 2.0 ) / ( tanf( the_fov / 2.0 ) );
+
+		view_matrix = MLMatrix4CreateTranslation( - width / 2.0 , height / 2.0 , -eye_z );
+		perspective_matrix = MLMatrix4CreatePerspective( the_fov , width / height , the_near , the_far );
+        projection_matrix = MLMatrix4Multiply( perspective_matrix , view_matrix );
+
+        glEnable( GL_BLEND );
+		glEnable( GL_CULL_FACE );
+        glEnable( GL_TEXTURE_2D );
+
+		glViewport( 0.0 , 0.0 , width , height );
+        glClearColor( 0.0 , 0.0 , 0.0 , 1.0 );
+		glBlendFunc( GL_SRC_ALPHA , GL_ONE_MINUS_SRC_ALPHA );
+
+    }
+    
+
+    // destructor
+
+    void destruct( )
+    {
+
+        base:release( );
+        shader:release( );
+        drawer:release( );
+        
+        view_trafo:release( );
+        view_animator:release( );
+
+        CLObject:destruct( self );
+    
+    }
+
+
+    // update ui
+
+    void update( )
+    {
+
+        base:update( );
+
+        if ( base.needs_redraw == 1 || view_animator.animation != NULL )
+        {
+            
+            if ( view_animator.animation != NULL ) set_view_ui_trafo( view_animator.animation.actual );
+
+            view_animator:update( );
+
+            base.needs_redraw = 0;
+            needs_redraw = 2;
+
+        }
+        
+    }
+
+
+    // render ui
+
+	void render( )
+	{
+    
+        if ( needs_redraw > 0 )
+        {
+        
+            GLfloat matrix[ 16 ];
+
+            glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+        
+            shader:use( );
+
+            MLMatrix4ToArray( &projection_matrix , matrix );
+            glUniformMatrix4fv( projection_ul , 1 , 0 , matrix );
+        
+            drawer:render( );
+            
+            needs_redraw -= 1;
+        
+        }
+
+	}
+        
+    
+    // zooms to element
+    
+    void zoom_to_element(
+        GLUIElement*    the_element ,
+        int             the_steps ,
+        char            the_easing )
+    {
+
+        MLVector3 a, b, c, d;
+        GLUITrafo* new_trafo;
+
+        the_element.get_absolute_frame( &a , &b , &c , &d );
+        
+        MLVector3 unit_x = MLVector3Sub( c , b );
+        MLVector3 unit_y = MLVector3Sub( a , b );
+        
+        float scale_x = MLVector3Length( unit_x ) / (the_element.extent).x;
+        
+        unit_x = MLVector3Scale( unit_x , 1 / MLVector3Length( unit_x ) );
+        unit_y = MLVector3Scale( unit_y , 1 / MLVector3Length( unit_y ) );
+        
+        MLVector3 rotation = MLVector3GetXYUnitRotation( unit_x , unit_y );
+
+        new_trafo:alloc( );
+        new_trafo:init( );
+
+        (new_trafo.scale).x = scale_x;
+        (new_trafo.scale).y = scale_x;
+        (new_trafo.scale).z = scale_x;
+        new_trafo.rotation = rotation;
+        new_trafo.translation = a;
+
+        zoom_to_ui_trafo( new_trafo , the_steps , the_easing );
+
+        // cleanup
+        
+        new_trafo:release( );
+
+    }
+
+    
+    // zooms to transformation
+    
+    void zoom_to_ui_trafo(
+        GLUITrafo*  the_trafo ,
+        int         the_steps ,
+        char        the_easing )
+    {
+
+        GLUITrafoAnimation* animation;
+    
+        if ( view_animator.animation != NULL ) view_animator.reset( );
+        
+        animation:alloc( );
+        animation:init_start_end_steps_easing(
+            view_trafo ,
+            the_trafo ,
+            the_steps ,
+            the_easing );
+
+        view_animator:add_animation( animation );
+        
+        // cleanup
+        
+        animation:release( );
+
+    }
+    
+    
+    // sets view transformation
+    
+    void set_view_ui_trafo( GLUITrafo* the_trafo )
+    {
+    
+        set_view_trafo( the_trafo.matrix( ) );
+        
+        view_trafo.scale = the_trafo.scale;
+        view_trafo.rotation = the_trafo.rotation;
+        view_trafo.translation = the_trafo.translation;
+    
+    }
+    
+    
+    // sets view transformation
+    
+    void set_view_trafo( MLMatrix4 the_matrix )
+    {
+
+        projection_matrix = MLMatrix4Invert( the_matrix , NULL );
+        projection_matrix = MLMatrix4Multiply( view_matrix , projection_matrix );
+        projection_matrix = MLMatrix4Multiply( perspective_matrix , projection_matrix );
+        
+        needs_redraw = 2;
+    
+    }
+    
+
+    // add element
+    
+    void add_element( GLUIElement* the_element )
+    {
+    
+        base:add_element( the_element );
+    
+    }
+    
+    
+    // remove element
+    
+    void remove_element( GLUIElement* the_element )
+    {
+
+        base:remove_element( the_element );
+
+    }
+    
+    
+    // sets focus on element
+    
+    void set_focus( GLUIElement* the_element )
+    {
+    
+        if ( the_element.accepts_focus == 1 )
+        {
+        
+            if ( focused != NULL ) focused.focus_off( );
+            focused = the_element;
+            focused.focus_on( );
+        
+        }
+    
+    }
+    
+    
+    // collectes intersected elements
+    
+    CLDataList* intersected_elements_at_x_y(
+        float the_x ,
+        float the_y ,
+        MLVector3* the_line_a ,
+        MLVector3* the_line_b )
+    {
+
+		MLVector4 vector_a, vector_b, result_a, result_b;
+		MLVector3 line_a, line_b;
+    
+        CLDataList* elements;
+        
+        elements:alloc( );
+        elements:init( );
+        
+        // create screen-plane-normal vectors
+
+		vector_a = MLVector4Create( the_x , the_y , -1.0 , 0 );
+		vector_b = MLVector4Create( the_x , the_y ,  1.0 , 0 );
+        
+        // unproject vectors to 3d world
+        
+		result_a = MLMatrix4UnProjectVector4FromScreen(
+			projection_matrix ,
+			vector_a ,
+			width ,
+			height );
+
+		result_b = MLMatrix4UnProjectVector4FromScreen(
+			projection_matrix , 
+			vector_b , 
+			width ,
+			height );
+        
+		line_a = MLVector3Create( result_a.x , result_a.y , result_a.z );
+		line_b = MLVector3Create( result_b.x , result_b.y , result_b.z );
+        
+        base:intersect_line_a_line_b_elements( line_a , line_b , elements );
+        
+        *the_line_a = line_a;
+        *the_line_b = line_b;
+
+        return elements;
+    
+    }
+    
+    
+    // mouse events
+    
+    void mouse_down_at_x_y( float the_x , float the_y )
+    {
+    
+        CLDataList* elements;
+
+        mouse_is_down = 1;
+        
+        MLVector3 lineA;
+        MLVector3 lineB;
+        
+        elements = intersected_elements_at_x_y( the_x , the_y , &lineA , &lineB );
+        
+        if ( elements.length > 0 )
+        {
+
+            touched = elements.last_data( );
+            touched.touch_began( lineA , lineB );
+            
+            set_focus( touched );
+        
+        }
+        
+        elements:release( );
+
+    }
+    
+    
+    void mouse_up_at_x_y( float the_x , float the_y )
+    {
+
+        CLDataList* elements;
+        
+        mouse_is_down = 0;
+        
+        MLVector3 lineA;
+        MLVector3 lineB;
+
+        elements = intersected_elements_at_x_y( the_x , the_y , &lineA , &lineB );
+        
+        if ( elements.length > 0 )
+        {
+        
+            GLUIElement* element = elements.last_data( );
+            element.touch_ended( lineA , lineB );
+            if ( element == touched ) touched = NULL;
+        
+        }
+        
+        if ( touched != NULL ) touched.touch_ended( lineA , lineB );
+        
+        touched = NULL;
+        
+        elements:release( );
+
+    }
+    
+    
+    void mouse_move_at_x_y( float the_x , float the_y )
+    {
+        
+        CLDataList* elements;
+
+        if ( mouse_is_down == 1 )
+        {
+        
+            MLVector3 lineA;
+            MLVector3 lineB;
+
+            elements = intersected_elements_at_x_y( the_x , the_y , &lineA , &lineB );
+            
+            if ( elements.length > 0 )
+            {
+            
+                GLUIElement* element = elements.last_data( );
+                element.touch_moved( lineA , lineB );
+            
+            }
+            
+            elements:release( );
+            
+        }
+
+    }
+
+
+    // key events
+
+    void key_down_characters( char* the_characters )
+    {
+    
+        if ( focused != NULL ) focused.key_down_characters( the_characters );
+        
+    }
+
+    // scroll events
+
+    void scroll_x_y( float the_x , float the_y )
+    {
+
+        base:scroll_x_y( the_x , the_y );
+    
+    }
+
+}

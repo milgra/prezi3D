@@ -1,0 +1,55 @@
+#include "GLUIElement.clc"
+
+
+GLUICursor:GLUIElement
+{
+
+    char counter;
+    
+    
+    // constructor
+
+    void init_name_frame( char* the_name , MLVector4 the_frame )
+    {
+    
+        GLUIElement:init_name_frame( self , the_name , the_frame );
+        
+        counter = 0;
+    
+    }
+
+
+    // simulation update
+    
+    void update( )
+    {
+    
+        GLUIElement:update( self );
+        
+        counter++;
+        
+        if ( counter < 20 )
+        {
+        
+            set_color( 0.0 , 0.0 , 0.0 , ( float ) counter / 20.0 );
+            needs_redraw = 1;
+            if ( drawer != NULL ) drawer.models_to_resend.add_data( model );
+            
+        }
+        else if ( counter < 41 )
+        {
+
+            set_color( 0.0 , 0.0 , 0.0 , 1.0 - ( ( float ) ( counter - 20 ) / 20.0 )  );
+            needs_redraw = 1;
+            if ( drawer != NULL ) drawer.models_to_resend.add_data( model );
+
+        }
+        else if ( counter < 60 )
+        {
+        
+        }
+        else if ( counter == 60 ) counter = 0;
+
+    }
+
+}

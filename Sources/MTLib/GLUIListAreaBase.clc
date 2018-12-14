@@ -1,0 +1,27 @@
+#include "GLUIElement.clc"
+
+
+GLUIListAreaBase:GLUIElement
+{
+
+    void touch_began( MLVector3 the_line_a , MLVector3 the_line_b  )
+    {
+        parent.touch_began( the_line_a , the_line_b );
+    }
+    
+    void touch_moved( MLVector3 the_line_a , MLVector3 the_line_b  )
+    {
+        parent.touch_moved( the_line_a , the_line_b );
+    }
+    
+    void touch_ended( MLVector3 the_line_a , MLVector3 the_line_b  )
+    {
+        parent.touch_ended( the_line_a , the_line_b );
+    }
+
+    void event( int the_id , void* the_source , void* the_data )
+    {
+        parent.event( the_id , self , the_source );
+    }
+    
+}
